@@ -8,7 +8,7 @@ storm.io.set(0, BL_CTL)
 ChairSettings = require "chairsettings"
 
 -- Store saved settings in flash and reset
---[[storm.os.invokePeriodically(1213 * storm.os.SECOND, function ()
+storm.os.invokePeriodically(1213 * storm.os.SECOND, function ()
     local h = heaterSettings
     local f = fanSettings
     local timediff = storm.n.get_time()
@@ -23,7 +23,7 @@ ChairSettings = require "chairsettings"
                           f[storm.n.BOTTOM_FAN],
                           timediff,
                           storm.os.reset)
-end)]]
+end)
 
 storm.n.enable_reset()
 
