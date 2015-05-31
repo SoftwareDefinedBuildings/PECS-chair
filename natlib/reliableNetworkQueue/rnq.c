@@ -112,6 +112,11 @@ int rnqclient_new(lua_State* L) {
     lua_pushnumber(L, random(L));
     lua_settable(L, self_index);
 
+    // table for timer watch
+    lua_pushstring(L, "timer");
+    lua_createtable(L, 1, 0);
+    lua_settable(L, self_index);
+
     lua_pushvalue(L, self_index);
     return 1;
 }
@@ -217,6 +222,16 @@ int rnqclient_processNextFromQueue(lua_State* L) {
     lua_pushstring(L, "front");
     lua_pushnumber(L, front + 1);
     lua_settable(L, 1);
+    
+    if (front + 1 == back) { // optimize for the common case
+        lua_pushstring(L, "front");
+        lua_pushnumber(L, 1);
+        lua_settable(L, 1);
+        
+        lua_pushstring(L, "back");
+        lua_pushnumber(L, 1);
+        lua_settable(L, 1);
+    }
 
     lua_pushstring(L, "currIP");
     lua_pushstring(L, "addr");
@@ -281,7 +296,8 @@ int rnqclient_processNextFromQueue(lua_State* L) {
     }
     lua_pop(L, 1);
 
-    lua_createtable(L, 1, 0);
+    lua_pushstring(L, "timer");
+    lua_gettable(L, 1);
     int table_index = lua_gettop(L);
     lua_pushnumber(L, 1); // the index of the watch in the table
     // Now for the cord part
@@ -320,6 +336,7 @@ int rnqclient_poll_send(lua_State* L) {
         lua_pushstring(L, "currPort");
         lua_gettable(L, self_index);
         lua_call(L, 4, 0);
+        //lua_pop(L, 5);
         lua_pushvalue(L, lua_upvalueindex(2));
         lua_call(L, 0, 0);
         lua_pushnumber(L, i + 1);
