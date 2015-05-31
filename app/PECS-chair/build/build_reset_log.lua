@@ -18,7 +18,7 @@ libs = { --<< EDIT ME
 
 -- If this is true, the toolchains will automatically check for updates when
 -- you program
-autoupdate = false
+autoupdate = true
 
 -- if true, this will reflash the kernel. This slows down programming, and is
 -- not necessary unless you have been told there are kernel updates.
