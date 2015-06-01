@@ -27,7 +27,7 @@ if fs == "chair":
         init.write("return BL_NAME")
     
 cd = "cd /home/oski/workspace/"
-build_dir = "PECS-chair/app/PECS-chair/build"
+build_dir = "contrib/app/PECS-chair/build"
 if fs == "firestorm":
     subprocess.call(["{0} && ./{1}/build_fs.lua".format(cd, build_dir)], shell=True)
 elif reset == "reset":

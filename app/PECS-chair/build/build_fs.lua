@@ -5,14 +5,14 @@
 -- this file will be automatically run on startup. If it terminates, the node 
 -- will drop to a debug shell. If this file is not specified, the node will 
 -- enter the shell immediately.
-autorun = "PECS-chair/app/PECS-chair/fscontroller.lua" --<< EDIT ME
+autorun = "contrib/app/PECS-chair/fscontroller.lua" --<< EDIT ME
 
 -- These are files that will be available as libraries. The name sets how they
 -- are 'require()'ed.
 libs = { --<< EDIT ME
-    cord    = "PECS-chair/lib/cord.lua",
-    stormsh = "PECS-chair/lib/stormsh.lua",
-    chairsettings = "PECS-chair/app/PECS-chair/chairsettings.lua"
+    cord    = "contrib/lib/cord.lua",
+    stormsh = "contrib/lib/stormsh.lua",
+    chairsettings = "contrib/app/PECS-chair/chairsettings.lua"
 }
 
 
