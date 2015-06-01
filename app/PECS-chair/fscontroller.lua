@@ -7,7 +7,7 @@ rnqcl = RNQC:new(60000)
 --proj_ip = "2001:470:66:3f9::2"
 cbe_ip = "2001:470:39:375::2"
 
-storm.os.invokeLater(5 * storm.os.MINUTE, function () storm.os.reset() end)
+storm.os.invokeLater(4 * storm.os.MINUTE, function () storm.os.reset() end)
 
 storm.os.invokePeriodically(10 * storm.os.SECOND, function ()
     collectgarbage("collect")
@@ -59,7 +59,7 @@ chairForwarder = RNQS:new(30002,
                                                          print("Success")
                                                       end
                                                    end)
-                             return {["time"] = storm.n.get_time()}  -- Allow chairs to synchronize time with firestorm
+                             return ok
                           end)
                                  
 -- Synchronize time with server every 20 seconds
@@ -88,7 +88,7 @@ synctime()
 storm.os.invokePeriodically(20 * storm.os.SECOND, synctime)
     
 -- Allow chairs to synchronize time with firestorm
---synchronizer = RNQS:new(30004, function () print("Got synchronization request") return {["time"] = storm.n.get_time()} end)
+synchronizer = RNQS:new(30004, function () print("Got synchronization request") return {["time"] = storm.n.get_time()} end)
 
 while true do
     storm.os.wait_callback()

@@ -85,7 +85,7 @@ function updateSMAP()
    storm.n.flash_write_log(storm.n.get_time(), pyld[3], pyld[4], pyld[5], pyld[6], temp, humidity, occ, false,
        function ()
            print("Logged")
-           rnqcl:sendMessage(pyld, "ff02::1", 30002, 175, 100 * storm.os.MILLISECOND, nil, time_sync_handler)
+           rnqcl:sendMessage(pyld, "ff02::1", 30002, 175, 100 * storm.os.MILLISECOND, nil, sendHandler)
        end)
    print("Updated")
 end

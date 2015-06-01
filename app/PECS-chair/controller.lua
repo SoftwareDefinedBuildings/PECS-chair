@@ -8,7 +8,7 @@ storm.io.set(0, BL_CTL)
 ChairSettings = require "chairsettings"
 
 -- Store saved settings in flash and reset
-storm.os.invokePeriodically(1213 * storm.os.SECOND, function ()
+--[[storm.os.invokePeriodically(1213 * storm.os.SECOND, function ()
     local h = heaterSettings
     local f = fanSettings
     local timediff = storm.n.get_time()
@@ -23,7 +23,7 @@ storm.os.invokePeriodically(1213 * storm.os.SECOND, function ()
                           f[storm.n.BOTTOM_FAN],
                           timediff,
                           storm.os.reset)
-end)
+end)]]
 
 storm.n.enable_reset()
 
@@ -39,8 +39,8 @@ function time_sync_handler(msg)
     end
 end
 empty = {}
---[[local time_entry = {}
-storm.os.invokePeriodically(60 * storm.os.SECOND, function ()
+time_sync = storm.n.RNQClient:new(60003)
+function sync_time()
     send_time = storm.n.get_time_always()
     print("asking for time")
     time_sync:sendMessage(empty,
@@ -48,13 +48,13 @@ storm.os.invokePeriodically(60 * storm.os.SECOND, function ()
                           30004,
                           250,
                           200 * storm.os.MILLISECOND,
-                          time_entry,
                           nil,
                           time_sync_handler)
-    end)]]
+end
+storm.os.invokePeriodically(60 * storm.os.SECOND, sync_time)
+sync_time()
 
 storm.n.bl_PECS_init()
---storm.n.bl_PECS_receive_cb_init()
 storm.n.bl_PECS_clear_recv_buf()
 
 function handle_bl_msg(bytes)
