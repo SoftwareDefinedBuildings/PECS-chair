@@ -30,10 +30,94 @@ int flash_init(lua_State* L) {
     storm_array_nc_create(L, LOG_ENTRY_LEN, ARR_TYPE_UINT8);
     lua_setglobal(L, "__readarr");
     
+    storm_array_nc_create(L, 1, ARR_TYPE_INT32);
+    lua_setglobal(L, "__updatetime");
+    
     storm_array_nc_create(L, 5, ARR_TYPE_INT32);
     lua_setglobal(L, "__settingsarr");
+    
+    lua_newtable(L);
+    lua_setglobal(L, "__flashqueue");
     return 0;
 }
+
+/* Provide queue to make sure the flash reads and writes don't occur concurrently. */
+
+int queue_empty = 1;
+int front_index = 1;
+int curr_index = 1;
+
+int execute_flash_task(lua_State* L);
+int finish_flash_task(lua_State* L) {
+    int num_args = lua_gettop(L);
+    lua_pushvalue(L, lua_upvalueindex(1));
+    int i;
+    for (i = 1; i <= num_args; i++) {
+        lua_pushvalue(L, i);
+    }
+    lua_call(L, num_args, 0);
+    lua_pop(L, num_args);
+    if (front_index == curr_index) {
+        front_index = 1;
+        curr_index = 1;
+        queue_empty = 1;
+    } else {
+        lua_pushlightfunction(L, execute_flash_task);
+        lua_call(L, 0, 0);
+    }
+    return 0;
+}
+
+int execute_flash_task(lua_State* L) {
+    lua_getglobal(L, "__flashqueue");
+    int table_index = lua_gettop(L);
+    lua_pushnumber(L, front_index++);
+    lua_gettable(L, table_index);
+    int task_index = lua_gettop(L);
+    size_t task_len = lua_objlen(L, task_index);
+    int i;
+    for (i = 1; i <= task_len; i++) {
+        lua_pushnumber(L, i);
+        lua_gettable(L, task_index);
+    }
+    // handling for the callback
+    lua_pushcclosure(L, finish_flash_task, 1);
+    
+    lua_call(L, task_len - 1, 0);
+    return 0;
+}
+
+int enqueue_flash_task(lua_State* L) {
+    int entry_len = lua_gettop(L);
+    
+    lua_getglobal(L, "__flashqueue");
+    int table_index = lua_gettop(L);
+    
+    // Create and fill in entry
+    lua_createtable(L, entry_len, 0);
+    int entry_index = lua_gettop(L);
+    int i;
+    for (i = 1; i <= entry_len; i++) {
+        lua_pushnumber(L, i);
+        lua_pushvalue(L, i);
+        lua_settable(L, entry_index);
+    }
+    
+    // Add entry to queue
+    lua_pushnumber(L, curr_index++);
+    lua_pushvalue(L, entry_index);
+    lua_settable(L, table_index);
+    
+    // Start execution if queue was empty
+    if (queue_empty) {
+        queue_empty = 0;
+        lua_pushlightfunction(L, execute_flash_task);
+        lua_call(L, 0, 0);
+    }
+    return 0;
+}
+
+/* Functions that write to the log. */
 
 int save_settings(lua_State* L) {
     lua_getglobal(L, "__settingsarr");
@@ -99,54 +183,84 @@ int get_saved_settings_cb(lua_State* L) {
     return 0;
 }
 
+int read_sp_1(lua_State* L);
 int read_sp_2(lua_State* L);
 int read_sp_3(lua_State* L);
 int read_sp_tail(lua_State* L);
+
+int read_p(lua_State* L, int offset) {
+    lua_pushlightfunction(L, read_sp_1);
+    lua_pushnumber(L, offset);
+    lua_pushvalue(L, 1);
+    lua_call(L, 2, 0);
+    return 0;
+}
+
 // read_sp(cb)
 int read_sp(lua_State* L) {
+    return read_p(L, SP_OFFSET);
+}
+
+int read_bp(lua_State* L) {
+    return read_p(L, BP_OFFSET);
+}
+
+int read_cp(lua_State* L) {
+    return read_p(L, CP_OFFSET);
+}
+
+int read_sp_1(lua_State* L) {
+    int offset = luaL_checkint(L, 1);
     lua_getglobal(L, "__r1");
     int arr_index = lua_gettop(L);
     lua_pushlightfunction(L, libstorm_flash_read);
-    lua_pushnumber(L, 0 << PAGE_EXP);
+    lua_pushnumber(L, (0 << PAGE_EXP) + offset);
     lua_pushvalue(L, arr_index);
-    lua_pushvalue(L, 1); // the callback
+    lua_pushvalue(L, 2); // the callback
     lua_pushvalue(L, arr_index);
-    lua_pushcclosure(L, read_sp_2, 2);
+    lua_pushvalue(L, 1);// the offset
+    lua_pushcclosure(L, read_sp_2, 3);
     lua_pushcclosure(L, delay_handler, 1);
     lua_call(L, 3, 0);
     return 0;
 }
 
 int read_sp_2(lua_State* L) {
+    int offset = lua_tointeger(L, lua_upvalueindex(3));
     lua_getglobal(L, "__r2");
     int arr_index = lua_gettop(L);
     lua_pushlightfunction(L, libstorm_flash_read);
-    lua_pushnumber(L, 1 << PAGE_EXP);
+    lua_pushnumber(L, (1 << PAGE_EXP) + offset);
     lua_pushvalue(L, arr_index);
     lua_pushvalue(L, lua_upvalueindex(1)); // the callback
     lua_pushvalue(L, lua_upvalueindex(2));
     lua_pushvalue(L, arr_index);
-    lua_pushcclosure(L, read_sp_3, 3);
+    lua_pushvalue(L, lua_upvalueindex(3)); // the offset
+    lua_pushcclosure(L, read_sp_3, 4);
     lua_pushcclosure(L, delay_handler, 1);
     lua_call(L, 3, 0);
     return 0;
 }
 
 int read_sp_3(lua_State* L) {
+    int offset = lua_tointeger(L, lua_upvalueindex(4));
     lua_getglobal(L, "__r3");
     int arr_index = lua_gettop(L);
     lua_pushlightfunction(L, libstorm_flash_read);
-    lua_pushnumber(L, 2 << PAGE_EXP);
+    lua_pushnumber(L, (2 << PAGE_EXP) + offset);
     lua_pushvalue(L, arr_index);
     lua_pushvalue(L, lua_upvalueindex(1)); // the callback
     lua_pushvalue(L, lua_upvalueindex(2));
     lua_pushvalue(L, lua_upvalueindex(3));
     lua_pushvalue(L, arr_index);
-    lua_pushcclosure(L, read_sp_tail, 4);
+    lua_pushvalue(L, lua_upvalueindex(4)); // the offset
+    lua_pushcclosure(L, read_sp_tail, 5);
     lua_pushcclosure(L, delay_handler, 1);
     lua_call(L, 3, 0);
     return 0;
 }
+
+int update_p(lua_State* L);
 
 int read_sp_tail(lua_State* L) {
     int i;
@@ -181,20 +295,59 @@ int read_sp_tail(lua_State* L) {
         }
         lua_pushlightfunction(L, libstorm_os_invoke_later);
         lua_pushnumber(L, 70 * MILLISECOND_TICKS);
-        lua_pushlightfunction(L, write_sp);
+        
         lua_pushnumber(L, sp);
+        lua_pushvalue(L, lua_upvalueindex(5)); // the offset
         lua_pushvalue(L, lua_upvalueindex(1));
         lua_pushnumber(L, sp);
         lua_pushcclosure(L, call_fn, 2);
-        lua_call(L, 4, 0);
+        lua_pushcclosure(L, update_p, 3);
+        lua_pushcclosure(L, delay_handler, 1);
+        
+        lua_call(L, 2, 0);
     }
     return 0;
 }
 
+int write_sp_1(lua_State* L);
 int write_sp_2(lua_State* L);
 int write_sp_3(lua_State* L);
+
+// Three upvalues: (1) new pointer value (2) offset (3) callback
+int update_p(lua_State* L) {
+    lua_pushlightfunction(L, write_sp_1);
+    int i;
+    for (i = 1; i <= 3; i++) {
+        lua_pushvalue(L, lua_upvalueindex(i));
+    }
+    lua_call(L, 3, 0);
+    return 0;
+}
+
+int write_p(lua_State* L, int offset) {
+    lua_pushlightfunction(L, write_sp_1);
+    lua_pushvalue(L, 1);
+    lua_pushnumber(L, offset);
+    lua_pushvalue(L, 2);
+    lua_call(L, 3, 0);
+    return 0;
+}
+
 int write_sp(lua_State* L) {
+    return write_p(L, SP_OFFSET);
+}
+
+int write_bp(lua_State* L) {
+    return write_p(L, BP_OFFSET);
+}
+
+int write_cp(lua_State* L) {
+    return write_p(L, CP_OFFSET);
+}
+
+int write_sp_1(lua_State* L) {
     int new_sp = luaL_checkint(L, 1);
+    int offset = luaL_checkint(L, 2);
     lua_getglobal(L, "__w1");
     int arr_index = lua_gettop(L);
     lua_pushlightfunction(L, arr_set);
@@ -203,42 +356,39 @@ int write_sp(lua_State* L) {
     lua_pushnumber(L, new_sp);
     lua_call(L, 3, 0);
     lua_pushlightfunction(L, libstorm_flash_write);
-    lua_pushnumber(L, 0 << PAGE_EXP);
+    lua_pushnumber(L, (0 << PAGE_EXP) + offset);
     lua_pushvalue(L, arr_index);
-    lua_pushvalue(L, 2); // callback
+    lua_pushvalue(L, 3); // callback
     lua_pushvalue(L, arr_index);
-    lua_pushcclosure(L, write_sp_2, 2);
+    lua_pushvalue(L, 2); // the offset
+    lua_pushcclosure(L, write_sp_2, 3);
     lua_pushcclosure(L, delay_handler, 1);
     lua_call(L, 3, 0);
     return 0;
 }
 
 int write_sp_2(lua_State* L) {
+    int offset = lua_tointeger(L, lua_upvalueindex(3));
     lua_pushlightfunction(L, libstorm_flash_write);
-    lua_pushnumber(L, 1 << PAGE_EXP);
+    lua_pushnumber(L, (1 << PAGE_EXP) + offset);
     lua_pushvalue(L, lua_upvalueindex(2));
     lua_pushvalue(L, lua_upvalueindex(1)); // callback
     lua_pushvalue(L, lua_upvalueindex(2));
-    lua_pushcclosure(L, write_sp_3, 2);
+    lua_pushvalue(L, lua_upvalueindex(3)); // the offset
+    lua_pushcclosure(L, write_sp_3, 3);
     lua_pushcclosure(L, delay_handler, 1);
     lua_call(L, 3, 0);
     return 0;
 }
 
 int write_sp_3(lua_State* L) {
+    int offset = lua_tointeger(L, lua_upvalueindex(3));
     lua_pushlightfunction(L, libstorm_flash_write);
-    lua_pushnumber(L, 2 << PAGE_EXP);
+    lua_pushnumber(L, (2 << PAGE_EXP) + offset);
     lua_pushvalue(L, lua_upvalueindex(2));
     lua_pushvalue(L, lua_upvalueindex(1)); // callback
+    lua_pushcclosure(L, delay_handler, 1);
     lua_call(L, 3, 0);
-    return 0;
-}
-
-int reset_log(lua_State* L) {
-    lua_pushlightfunction(L, write_sp);
-    lua_pushnumber(L, 3 << PAGE_EXP);
-    lua_pushvalue(L, 1); // callback
-    lua_call(L, 2, 0);
     return 0;
 }
 
@@ -293,6 +443,26 @@ int get_kernel_secs(lua_State* L) {
     return 1;
 }
 
+// update_time(address, new_time, callback)
+int update_time(lua_State* L) {
+    lua_getglobal(L, "__updatetime");
+    int arr_index = lua_gettop(L);
+    lua_pushlightfunction(L, arr_set);
+    lua_pushvalue(L, arr_index);
+    lua_pushnumber(L, 1);
+    lua_pushvalue(L, 2); // the new time
+    lua_call(L, 3, 0);
+    
+    lua_pushlightfunction(L, libstorm_flash_write);
+    lua_pushvalue(L, 1);
+    lua_pushvalue(L, arr_index);
+    lua_pushvalue(L, 3); // the callback
+    lua_pushcclosure(L, delay_handler, 1); // the next operation may be a flash operation
+    lua_call(L, 3, 0);
+    
+    return 0;
+}
+
 /** FORMAT OF A LOG ENTRY
     Each log entry has the following format:
     1. Timestamp (32 bits)
@@ -319,16 +489,17 @@ int write_log_entry(lua_State* L) {
     uint8_t bytes[LOG_ENTRY_LEN];
     uint32_t timestamp;
     
+    lua_pushlightfunction(L, get_kernel_secs);
+    lua_call(L, 0, 1);
     if (lua_isnil(L, 1)) {
-        timestamp = 0;
+        timestamp = lua_tointeger(L, -1);
         known_time = 0;
     } else {
-        lua_pushlightfunction(L, get_kernel_secs);
-        lua_call(L, 0, 1);
         timestamp = lua_tointeger(L, -1) + luaL_checkint(L, 1);
-        lua_pop(L, 1);
         known_time = 1;
     }
+    lua_pop(L, 1);
+    
     uint8_t backh = (uint8_t) luaL_checkint(L, 2);
     uint8_t bottomh = (uint8_t) luaL_checkint(L, 3);
     uint8_t backf = (uint8_t) luaL_checkint(L, 4);
@@ -380,13 +551,18 @@ int write_log_entry_cb(lua_State* L) {
     return 0;
 }
 
+uint32_t next_p(uint32_t p) {
+    uint32_t new_p = p + LOG_ENTRY_LEN;
+    uint32_t next_page = ((new_p >> PAGE_EXP) + 1) << PAGE_EXP;
+    if (next_page - new_p < LOG_ENTRY_LEN) {
+        new_p = next_page;
+    }
+    return new_p;
+}
+
 int write_log_entry_cleanup(lua_State* L) {
     uint32_t prev_sp = lua_tonumber(L, lua_upvalueindex(1));
-    uint32_t new_sp = prev_sp + LOG_ENTRY_LEN;
-    uint32_t next_page = ((new_sp >> PAGE_EXP) + 1) << PAGE_EXP;
-    if (next_page - new_sp < LOG_ENTRY_LEN) {
-        new_sp = next_page;
-    }
+    uint32_t new_sp = next_p(prev_sp);
     lua_pushlightfunction(L, write_sp);
     lua_pushnumber(L, new_sp);
     lua_pushvalue(L, lua_upvalueindex(2)); // the callback
@@ -395,6 +571,7 @@ int write_log_entry_cleanup(lua_State* L) {
     return 0;
 }
 
+int read_log_entry_addr(lua_State* L);
 int read_log_entry_cb(lua_State* L);
 int read_log_entry(lua_State* L) {
     int index = luaL_checkint(L, 1);
@@ -402,6 +579,14 @@ int read_log_entry(lua_State* L) {
     uint32_t page = index / entries_per_page;
     uint32_t page_offset = index % entries_per_page;
     uint32_t flash_addr = LOG_START + (page << PAGE_EXP) + (page_offset * LOG_ENTRY_LEN);
+    lua_pushlightfunction(L, read_log_entry_addr);
+    lua_pushnumber(L, flash_addr);
+    lua_call(L, 1, 0);
+    return 0;
+}
+
+int read_log_entry_addr(lua_State* L) {
+    uint32_t flash_addr = (uint32_t) luaL_checkint(L, 1);
     
     lua_getglobal(L, "__readarr");
     int arr_index = lua_gettop(L);
@@ -443,20 +628,17 @@ int read_log_entry_cb(lua_State* L) {
     uint8_t known_time = (secondlastbyte >> 5) & 0x1;
     
     lua_pushvalue(L, lua_upvalueindex(2)); // the callback
-    if (known_time) {
-        lua_pushnumber(L, timestamp);
-    } else {
-        lua_pushnil(L);
-    }
+    lua_pushnumber(L, timestamp);
+    lua_pushnumber(L, occ);
     lua_pushnumber(L, backh);
     lua_pushnumber(L, bottomh);
     lua_pushnumber(L, backf);
     lua_pushnumber(L, bottomf);
     lua_pushnumber(L, temperature);
     lua_pushnumber(L, humidity);
-    lua_pushnumber(L, occ);
+    lua_pushnumber(L, known_time);
     lua_pushnumber(L, rebooted);
-    lua_call(L, 9, 0);
+    lua_call(L, 10, 0);
     
     return 0;
 }

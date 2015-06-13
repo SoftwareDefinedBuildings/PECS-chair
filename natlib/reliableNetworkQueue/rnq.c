@@ -112,13 +112,32 @@ int rnqclient_new(lua_State* L) {
     lua_pushnumber(L, random(L));
     lua_settable(L, self_index);
 
-    // table for timer watch
-    lua_pushstring(L, "timer");
-    lua_createtable(L, 1, 0);
-    lua_settable(L, self_index);
-
     lua_pushvalue(L, self_index);
     return 1;
+}
+
+// RNQClient:cancelMessage()
+// Stops attempting to send the current message, and moves on to the next message in the queue
+int rnqclient_cancelMessage(lua_State* L) {
+    lua_pushstring(L, "pending");
+    lua_pushboolean(L, 0);
+    lua_settable(L, 1);
+    
+    return 0;
+}
+
+// RNQClient:empty()
+// Empties the reliable network queue (cancels all requests waiting to be sent)
+int rnqclient_empty(lua_State* L) {
+    lua_pushstring(L, "front");
+    lua_pushnumber(L, 1);
+    lua_settable(L, 1);
+    
+    lua_pushstring(L, "back");
+    lua_pushnumber(L, 1);
+    lua_settable(L, 1);
+    
+    return 0;
 }
 
 int rnqclient_processNextFromQueue(lua_State* L);
@@ -296,12 +315,8 @@ int rnqclient_processNextFromQueue(lua_State* L) {
     }
     lua_pop(L, 1);
 
-    lua_pushstring(L, "timer");
-    lua_gettable(L, 1);
-    int table_index = lua_gettop(L);
-    lua_pushnumber(L, 1); // the index of the watch in the table
     // Now for the cord part
-    lua_pushlightfunction(L, libstorm_os_invoke_periodically);
+    lua_pushlightfunction(L, libstorm_os_invoke_later);
     lua_pushnumber(L, timeBetween);
     lua_pushvalue(L, 1); // self
     lua_pushvalue(L, tryCallback_index); // tryCallback
@@ -309,10 +324,9 @@ int rnqclient_processNextFromQueue(lua_State* L) {
     lua_pushvalue(L, msg_index); // msg
     lua_pushnumber(L, 0); // i
     lua_pushvalue(L, req_index);
-    lua_pushvalue(L, table_index); // table containing watch
+    lua_pushnumber(L, timeBetween); // time between tries
     lua_pushcclosure(L, rnqclient_poll_send, 7);
     lua_call(L, 2, 1);
-    lua_settable(L, table_index); // store watch in table
 
     return 0;
 }
@@ -336,17 +350,20 @@ int rnqclient_poll_send(lua_State* L) {
         lua_pushstring(L, "currPort");
         lua_gettable(L, self_index);
         lua_call(L, 4, 0);
-        //lua_pop(L, 5);
         lua_pushvalue(L, lua_upvalueindex(2));
         lua_call(L, 0, 0);
         lua_pushnumber(L, i + 1);
         lua_replace(L, lua_upvalueindex(5));
+        
+        // Schedule next iteration
+        lua_pushlightfunction(L, libstorm_os_invoke_later);
+        lua_pushvalue(L, lua_upvalueindex(7));
+        for (i = 1; i <= 7; i++) {
+            lua_pushvalue(L, lua_upvalueindex(i));
+        }
+        lua_pushcclosure(L, rnqclient_poll_send, 7);
+        lua_call(L, 2, 0);
     } else {
-        lua_pushlightfunction(L, libstorm_os_cancel);
-        lua_pushnumber(L, 1);
-        lua_gettable(L, lua_upvalueindex(7));
-        lua_call(L, 1, 0);
-
         lua_pushvalue(L, self_index); // self
         lua_pushvalue(L, lua_upvalueindex(6)); // req
         lua_pushcclosure(L, rnqclient_transaction_handler, 2);
@@ -497,7 +514,7 @@ int rnqserver_receipt_handler(lua_State* L) {
     return 0;
 }
 
-// RNQServer:new(port)
+// RNQServer:new(port, responseGenerator)
 int rnqserver_new(lua_State* L) {
     if (lua_gettop(L) == 2 || lua_isnil(L, 3)) {
         lua_pushlightfunction(L, empty);

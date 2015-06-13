@@ -31,16 +31,15 @@ function setFan(fan, setting)
 end
 
 storm.n.flash_init()
-storm.n.flash_get_saved_settings(function (backh, bottomh, backf, bottomf, timediff)
+storm.n.enqueue_flash_task(storm.n.flash_get_saved_settings, function (backh, bottomh, backf, bottomf, timediff)
     setHeater(storm.n.BACK_HEATER, backh)
     setHeater(storm.n.BOTTOM_HEATER, bottomh)
     setFan(storm.n.BACK_FAN, backf)
     setFan(storm.n.BOTTOM_FAN, bottomf)
     storm.n.set_time_diff(timediff)
-    storm.n.flash_save_settings(0, 0, 0, 0, 0, function () -- So it turns off if the user taps the screen
-        storm.n.flash_write_log(nil, 0, 0, 0, 0, 0, 0, 0, true, function () print("Logging reboot") end)
-    end)
 end)
+storm.n.enqueue_flash_task(storm.n.flash_save_settings, 0, 0, 0, 0, 0, function () end) -- So it turns off if the user taps the screen
+storm.n.enqueue_flash_task(storm.n.flash_write_log, nil, 0, 0, 0, 0, 0, 0, 0, true, function () print("Logging reboot") end)
 
 function modulateHeater(heater)
     storm.os.invokePeriodically(storm.os.SECOND, function ()
@@ -82,7 +81,7 @@ function updateSMAP()
    storm.n.bl_PECS_send(strpyld)
    
    -- Log to Flash
-   storm.n.flash_write_log(storm.n.get_time(), pyld[3], pyld[4], pyld[5], pyld[6], temp, humidity, occ, false,
+   storm.n.enqueue_flash_task(storm.n.flash_write_log, storm.n.get_time_diff(), pyld[3], pyld[4], pyld[5], pyld[6], temp, humidity, occ, false,
        function ()
            print("Logged")
            rnqcl:sendMessage(pyld, "ff02::1", 30002, 175, 100 * storm.os.MILLISECOND, nil, sendHandler)
@@ -90,7 +89,30 @@ function updateSMAP()
    print("Updated")
 end
 
-storm.os.invokePeriodically(20 * storm.os.SECOND, updateSMAP)
+function logDataPoint()
+    local temp
+    local humidity
+    local occ
+    temp, humidity = storm.n.get_temp_humidity(storm.n.CELSIUS)
+    if storm.n.check_occupancy() then
+        occ = 1
+    else
+        occ = 0
+    end
+    storm.n.enqueue_flash_task(storm.n.flash_write_log,
+                               storm.n.get_time_diff(),
+                               heaterSettings[storm.n.BACK_HEATER],
+                               heaterSettings[storm.n.BOTTOM_HEATER],
+                               fanSettings[storm.n.BACK_FAN],
+                               fanSettings[storm.n.BOTTOM_FAN],
+                               temp,
+                               humidity,
+                               occ,
+                               false,
+                               function () print("Logged") end)
+end
+
+storm.os.invokePeriodically(20 * storm.os.SECOND, logDataPoint)
 
 local last_occupancy_state = false
 storm.os.invokePeriodically(
