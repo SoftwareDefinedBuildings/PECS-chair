@@ -230,6 +230,7 @@ int write_sp_3(lua_State* L) {
     lua_pushnumber(L, 2 << PAGE_EXP);
     lua_pushvalue(L, lua_upvalueindex(2));
     lua_pushvalue(L, lua_upvalueindex(1)); // callback
+    lua_pushcclosure(L, delay_handler, 1);
     lua_call(L, 3, 0);
     return 0;
 }

@@ -82,7 +82,7 @@ function updateSMAP()
    storm.n.bl_PECS_send(strpyld)
    
    -- Log to Flash
-   storm.n.flash_write_log(storm.n.get_time(), pyld[3], pyld[4], pyld[5], pyld[6], temp, humidity, occ, false,
+   storm.n.flash_write_log(storm.n.get_time_diff(), pyld[3], pyld[4], pyld[5], pyld[6], temp, humidity, occ, false,
        function ()
            print("Logged")
            rnqcl:sendMessage(pyld, "ff02::1", 30002, 175, 100 * storm.os.MILLISECOND, nil, sendHandler)
