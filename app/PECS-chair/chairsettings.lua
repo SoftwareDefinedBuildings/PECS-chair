@@ -31,6 +31,8 @@ function setFan(fan, setting)
 end
 
 storm.n.flash_init()
+storm.n.enqueue_flash_task(storm.n.flash_read_sp, storm.n.autosender_init)
+storm.n.enqueue_flash_task(storm.n.flash_write_log, nil, 0, 0, 0, 0, 0, 0, 0, true, function () print("Logging reboot") end)
 storm.n.enqueue_flash_task(storm.n.flash_get_saved_settings, function (backh, bottomh, backf, bottomf, timediff)
     setHeater(storm.n.BACK_HEATER, backh)
     setHeater(storm.n.BOTTOM_HEATER, bottomh)
@@ -39,7 +41,6 @@ storm.n.enqueue_flash_task(storm.n.flash_get_saved_settings, function (backh, bo
     storm.n.set_time_diff(timediff)
 end)
 storm.n.enqueue_flash_task(storm.n.flash_save_settings, 0, 0, 0, 0, 0, function () end) -- So it turns off if the user taps the screen
-storm.n.enqueue_flash_task(storm.n.flash_write_log, nil, 0, 0, 0, 0, 0, 0, 0, true, function () print("Logging reboot") end)
 
 function modulateHeater(heater)
     storm.os.invokePeriodically(storm.os.SECOND, function ()
@@ -63,7 +64,7 @@ end
 local sendHandler = function (message) if message ~= nil then print("Success!") else print("15.4 Failed") end end
 
 rnqcl = storm.n.RNQClient:new(30000)
-function updateSMAP()
+--[[function updateSMAP()
    -- Update sMAP
    local temp
    local humidity
@@ -87,7 +88,7 @@ function updateSMAP()
            rnqcl:sendMessage(pyld, "ff02::1", 30002, 175, 100 * storm.os.MILLISECOND, nil, sendHandler)
        end)
    print("Updated")
-end
+end]]
 
 function logDataPoint()
     local temp
@@ -112,7 +113,7 @@ function logDataPoint()
                                function () print("Logged") end)
 end
 
-storm.os.invokePeriodically(20 * storm.os.SECOND, logDataPoint)
+storm.os.invokePeriodically(5 * storm.os.SECOND, logDataPoint)
 
 local last_occupancy_state = false
 storm.os.invokePeriodically(

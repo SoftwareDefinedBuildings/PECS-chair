@@ -36,6 +36,7 @@ function time_sync_handler(msg)
         local diff = storm.n.compute_time_diff(send_time, msg.time, msg.time, recv_time)
         print("Calculated diff " .. diff)
         storm.n.set_time_diff(diff)
+        storm.n.autosender_register_time_sync()
     end
 end
 empty = {}
@@ -65,7 +66,7 @@ function handle_bl_msg(bytes)
     storm.n.bl_PECS_receive_cb(5, handle_bl_msg)
 end
 
-storm.os.invokePeriodically(10 * storm.os.SECOND, function ()
+storm.os.invokePeriodically(1 * storm.os.SECOND, function ()
     collectgarbage("collect")
     print("Using " .. gcinfo())
     print("Bytes " .. storm.n.gcbytes())

@@ -105,3 +105,39 @@ int pack_string(lua_State* L) {
     lua_pushlstring(L, strbuf, 9);
     return 1;
 }
+
+void write_big_endian_16(uint16_t data, uint8_t* buffer) {
+    buffer[0] = data >> 8;
+    buffer[1] = data & 0x00FF;
+}
+
+void write_big_endian_32(uint32_t data, uint8_t* buffer) {
+    buffer[0] = (uint8_t) (data >> 24);
+    buffer[1] = (uint8_t) ((data & 0x00FF0000) >> 16);
+    buffer[2] = (uint8_t) ((data & 0x0000FF00) >> 8);
+    buffer[3] = (uint8_t) (data & 0x000000FF);
+}
+
+char lstrbuf[17];
+int pack_large_string(lua_State* L) {
+    lstrbuf[0] = (char) luaL_checkint(L, 1); // back heater
+    lstrbuf[1] = (char) luaL_checkint(L, 2); // bottom heater
+    lstrbuf[2] = (char) luaL_checkint(L, 3); // back fan
+    lstrbuf[3] = (char) luaL_checkint(L, 4); // bottom fan
+    lstrbuf[4] = (char) luaL_checkint(L, 5); // occupancy
+    
+    uint16_t temp = (uint16_t) luaL_checkint(L, 6);
+    write_big_endian_16(temp, (uint8_t*) (lstrbuf + 5));
+    
+    uint16_t humidity = (uint16_t) luaL_checkint(L, 7);
+    write_big_endian_16(humidity, (uint8_t*) (lstrbuf + 7));
+    
+    uint32_t timestamp = (uint32_t) luaL_checkint(L, 8);
+    write_big_endian_32(timestamp, (uint8_t*) (lstrbuf + 9));
+    
+    uint32_t ack_id = (uint32_t) luaL_checkint(L, 9);
+    write_big_endian_32(ack_id, (uint8_t*) (lstrbuf + 13));
+    
+    lua_pushlstring(L, lstrbuf, 17);
+    return 1;
+}

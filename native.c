@@ -34,6 +34,8 @@
 #include "natlib/chair/blchair.c"
 #include "natlib/chair/flash.c"
 #include "natlib/chair/receiver.c"
+#include "natlib/chair/autosender.c"
+
 #include "natlib/neopixel.c"
 
 
@@ -194,6 +196,7 @@ const LUA_REG_TYPE contrib_native_map[] =
     BLCHAIR_SYMBOLS
     FLASH_SYMBOLS
     RECEIVER_SYMBOLS
+    AUTOSENDER_SYMBOLS
     ADCIFE_SYMBOLS
     RNQ_SYMBOLS
     NEOPIXEL_SYMBOLS

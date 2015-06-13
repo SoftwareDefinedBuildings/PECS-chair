@@ -2,6 +2,8 @@
 
 int32_t timediff = 0;
 
+int register_time_synchronization(lua_State* L); // defined in autosender.c
+
 /* function (msgTable, ip, port)
       print("got")
       pt(msgTable)
@@ -187,6 +189,8 @@ int bl_handler(lua_State* L) {
         lua_pop(L, 2);
         lua_pushnumber(L, diff);
         lua_call(L, 1, 0);
+        lua_pushlightfunction(L, register_time_synchronization);
+        lua_call(L, 0, 0);
     }
     return 0;
 }

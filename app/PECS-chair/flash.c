@@ -49,6 +49,7 @@ int curr_index = 1;
 
 int execute_flash_task(lua_State* L);
 int finish_flash_task(lua_State* L) {
+    //printf("Finished flash task\n");
     int num_args = lua_gettop(L);
     lua_pushvalue(L, lua_upvalueindex(1));
     int i;
@@ -61,6 +62,7 @@ int finish_flash_task(lua_State* L) {
         front_index = 1;
         curr_index = 1;
         queue_empty = 1;
+        //printf("Resetting flash queue\n");
     } else {
         lua_pushlightfunction(L, execute_flash_task);
         lua_call(L, 0, 0);
@@ -75,6 +77,7 @@ int execute_flash_task(lua_State* L) {
     lua_gettable(L, table_index);
     int task_index = lua_gettop(L);
     size_t task_len = lua_objlen(L, task_index);
+    //printf("Executing task of length %d (tasks remaining: %d)\n", task_len, curr_index - front_index);
     int i;
     for (i = 1; i <= task_len; i++) {
         lua_pushnumber(L, i);
@@ -107,6 +110,8 @@ int enqueue_flash_task(lua_State* L) {
     lua_pushnumber(L, curr_index++);
     lua_pushvalue(L, entry_index);
     lua_settable(L, table_index);
+    
+    //printf("Enqueued task of length %d (now %d tasks on queue)\n", lua_objlen(L, entry_index), curr_index - front_index);
     
     // Start execution if queue was empty
     if (queue_empty) {
