@@ -5,7 +5,6 @@ cord.new(function ()
     BL_NAME.set_name()
     
     storm.n.bl_PECS_init()
-    storm.n.bl_PECS_receive_cb_init()
     
     storm.n.bl_PECS_send("AT+RESET")
     print("> AT+RESET")
