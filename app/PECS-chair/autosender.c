@@ -373,11 +373,11 @@ int try_send(lua_State* L) {
     lua_call(L, 8, 0);
     
     // For testing purposes only. REMOVE FOR PRODUCTION.
-    lua_pushlightfunction(L, libstorm_os_invoke_later);
+    /*lua_pushlightfunction(L, libstorm_os_invoke_later);
     lua_pushnumber(L, 500 * MILLISECOND_TICKS);
     lua_pushlightfunction(L, register_ack);
     lua_pushnumber(L, expected_ack);
-    lua_call(L, 3, 0);
+    lua_call(L, 3, 0);*/
     
     return 0;
 }
