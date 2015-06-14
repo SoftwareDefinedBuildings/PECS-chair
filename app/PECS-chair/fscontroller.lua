@@ -3,8 +3,8 @@ RNQS = storm.n.RNQServer
 
 rnqcl = RNQC:new(60000)
 
---shell_ip = "2001:470:1f04:5f2::2"
---proj_ip = "2001:470:66:3f9::2"
+shell_ip = "2001:470:1f04:5f2::2"
+proj_ip = "2001:470:66:3f9::2"
 cbe_ip = "2001:470:39:375::2"
 
 storm.os.invokeLater(10 * storm.os.MINUTE, function () storm.os.reset() end)
@@ -15,17 +15,17 @@ storm.os.invokePeriodically(10 * storm.os.SECOND, function ()
     print("Bytes " .. storm.n.gcbytes())
 end)
 
-server_ip = cbe_ip
+server_ip = shell_ip
 ok = {["rv"] = "ok"}
-function sendActuationMessage(payload, srcip, srcport)
+--[[function sendActuationMessage(payload, srcip, srcport)
    local toIP = payload["toIP"]
    payload["toIP"] = nil
    print("Actuating " .. toIP)
    rnqcl:sendMessage(payload,
                      toIP,
                      60004,
-                     180,
-                     100 * storm.os.MILLISECOND,
+                     90,
+                     200 * storm.os.MILLISECOND,
                      function ()
                         print("trying")
                      end,
@@ -37,7 +37,7 @@ function sendActuationMessage(payload, srcip, srcport)
                         end
                      end)
     return ok
-end
+end]]
 
 from_server = RNQS:new(60001, sendActuationMessage)
 to_server = RNQC:new(30001)
@@ -52,8 +52,8 @@ chairForwarder = RNQS:new(30002,
                              to_server:sendMessage(payload,
                                                    server_ip,
                                                    38003,
-                                                   100,
-                                                   100 * storm.os.MILLISECOND,
+                                                   50,
+                                                   200 * storm.os.MILLISECOND,
                                                    nil,
                                                    function (msg)
                                                       if msg ~= nil then
@@ -72,8 +72,8 @@ ackForwarder = RNQS:new(20000,
                             acksender:sendMessage(payload,
                                                   toIP,
                                                   20000,
-                                                  100,
-                                                  100 * storm.os.MILLISECOND,
+                                                  50,
+                                                  200 * storm.os.MILLISECOND,
                                                   nil,
                                                   function (msg)
                                                       if msg == nil then
@@ -95,8 +95,8 @@ function synctime()
     time_sync:sendMessage(empty,
                           server_ip,
                           38002,
-                          100,
-                          100 * storm.os.MILLISECOND,
+                          50,
+                          200 * storm.os.MILLISECOND,
                           nil,
                           function (msg)
                              if msg ~= nil then

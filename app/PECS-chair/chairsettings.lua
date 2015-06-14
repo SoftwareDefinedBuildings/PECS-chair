@@ -76,7 +76,7 @@ function updateSMAP()
    if pyld[2] then
       occ = 1
    end
-   local strpyld = storm.n.pack_string(pyld[3], pyld[4], pyld[5], pyld[6], occ, temp, humidity)
+   local strpyld = storm.n.pack_string(pyld[3], pyld[4], pyld[5], pyld[6], occ, temp, humidity, pyld[1])
    storm.n.bl_PECS_send(strpyld)
    
    -- Log to Flash

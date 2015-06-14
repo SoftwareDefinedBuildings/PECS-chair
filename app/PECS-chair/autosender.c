@@ -109,7 +109,7 @@ int ack_handler(lua_State* L) {
     lua_gettable(L, 1);
     if (!lua_isnil(L, -1)) {
         lua_pushlightfunction(L, register_ack);
-        lua_tointeger(L, -2);
+        lua_pushvalue(L, -2);
         lua_call(L, 1, 0);
     }
     lua_getglobal(L, "__default_resp");
@@ -259,6 +259,11 @@ int try_send(lua_State* L);
    Third, it waits for an acknowledgement that the data has been received. */
 // Previous cp passed as upvalue
 int send_log_entry(lua_State* L) {
+    // Get the node id (macaddr)
+    lua_pushlightfunction(L, libstorm_os_getnodeid);
+    lua_call(L, 0, 1);
+    int nodeid_index = lua_gettop(L);
+    
     // Create table to send via 15.4
     lua_createtable(L, 10, 0);
     int table_index = lua_gettop(L);
@@ -269,8 +274,7 @@ int send_log_entry(lua_State* L) {
         lua_pushnumber(L, i);
         switch (i) {
         case 1:
-            lua_pushlightfunction(L, libstorm_os_getnodeid);
-            lua_call(L, 0, 1);
+            lua_pushvalue(L, nodeid_index);
             break;
         case 2: // occ
         case 3: // backh
@@ -303,14 +307,13 @@ int send_log_entry(lua_State* L) {
         lua_settable(L, table_index);
     }
     
-    // the table is at the top of the stack
     lua_setglobal(L, "__rnqMessage");
     
     printf("RNQ message done\n");
     
     // Create string to send via bluetooth
     lua_pushlightfunction(L, pack_large_string);
-    for (i = 1; i <= 9; i++) {
+    for (i = 1; i <= 10; i++) {
         switch (i) {
         case 1:
         case 2:
@@ -326,14 +329,17 @@ int send_log_entry(lua_State* L) {
             lua_pushvalue(L, i + 1);
             break;
         case 8:
-            lua_pushnumber(L, true_time);
+            lua_pushvalue(L, nodeid_index);
             break;
         case 9:
+            lua_pushnumber(L, true_time);
+            break;
+        case 10:
             lua_pushvalue(L, lua_upvalueindex(1));
             break;
         }
     }
-    lua_call(L, 9, 1);
+    lua_call(L, 10, 1);
     
     // string is at the top of the stack
     lua_setglobal(L, "__blString");
@@ -360,6 +366,8 @@ int try_send(lua_State* L) {
     lua_getglobal(L, "__blString");
     lua_call(L, 1, 0);
     
+    printf("Sent bluetooth\n");
+    
     // try to send via 15.4
     lua_pushlightfunction(L, rnqclient_sendMessage);
     lua_getglobal(L, "__data_client"); // an RNQ Client
@@ -372,6 +380,7 @@ int try_send(lua_State* L) {
     lua_pushlightfunction(L, try_send); // if it times out, try again
     lua_call(L, 8, 0);
     
+    printf("Function returned\n");
     // For testing purposes only. REMOVE FOR PRODUCTION.
     /*lua_pushlightfunction(L, libstorm_os_invoke_later);
     lua_pushnumber(L, 500 * MILLISECOND_TICKS);
