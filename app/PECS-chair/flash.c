@@ -419,16 +419,6 @@ int get_log_size_tail(lua_State* L) {
     return 0;
 }
 
-int bytes_to_timestamp(lua_State* L) {
-    uint32_t byte1 = (uint32_t) luaL_checkint(L, 1);
-    uint32_t byte2 = (uint32_t) luaL_checkint(L, 2);
-    uint32_t byte3 = (uint32_t) luaL_checkint(L, 3);
-    uint32_t byte4 = (uint32_t) luaL_checkint(L, 4);
-    uint32_t timestamp = (byte1 << 24) | (byte2 << 16) | (byte3 << 8) | byte4;
-    lua_pushnumber(L, timestamp);
-    return 1;
-}
-
 int get_kernel_secs(lua_State* L) {
     lua_pushlightfunction(L, libstorm_os_now);
     lua_pushnumber(L, 2);

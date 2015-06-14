@@ -4,6 +4,18 @@ int32_t timediff = 0;
 
 int register_time_synchronization(lua_State* L); // defined in autosender.c
 
+int register_ack(lua_State* L);
+
+int bytes_to_u32(lua_State* L) {
+    uint32_t byte1 = (uint32_t) luaL_checkint(L, 1);
+    uint32_t byte2 = (uint32_t) luaL_checkint(L, 2);
+    uint32_t byte3 = (uint32_t) luaL_checkint(L, 3);
+    uint32_t byte4 = (uint32_t) luaL_checkint(L, 4);
+    uint32_t timestamp = (byte1 << 24) | (byte2 << 16) | (byte3 << 8) | byte4;
+    lua_pushnumber(L, timestamp);
+    return 1;
+}
+
 /* function (msgTable, ip, port)
       print("got")
       pt(msgTable)
@@ -148,7 +160,8 @@ int bl_handler(lua_State* L) {
     int number = luaL_checkint(L, 5);
     lua_getglobal(L, "ChairSettings");
     int settings_index = lua_gettop(L);
-    if (number == 1) {
+    switch (number) {
+    case 1:
         lua_pushstring(L, "setHeater");
         lua_gettable(L, settings_index);
         int heater_index = lua_gettop(L);
@@ -175,9 +188,20 @@ int bl_handler(lua_State* L) {
         lua_pushnumber(L, BOTTOM_FAN);
         lua_pushvalue(L, 4);
         lua_call(L, 2, 0);
-    } else {
+        break;
+    case 2:
+        lua_pushlightfunction(L, register_ack);
+        lua_pushlightfunction(L, bytes_to_u32);
+        lua_pushvalue(L, 1);
+        lua_pushvalue(L, 2);
+        lua_pushvalue(L, 3);
+        lua_pushvalue(L, 4);
+        lua_call(L, 4, 1);
+        lua_call(L, 1, 0);
+        break;
+    default:
         lua_pushlightfunction(L, set_time_diff);
-        lua_pushlightfunction(L, bytes_to_timestamp);
+        lua_pushlightfunction(L, bytes_to_u32);
         lua_pushvalue(L, 1);
         lua_pushvalue(L, 2);
         lua_pushvalue(L, 3);
@@ -191,6 +215,7 @@ int bl_handler(lua_State* L) {
         lua_call(L, 1, 0);
         lua_pushlightfunction(L, register_time_synchronization);
         lua_call(L, 0, 0);
+        break;
     }
     return 0;
 }

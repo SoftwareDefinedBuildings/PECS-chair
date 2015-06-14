@@ -61,6 +61,30 @@ chairForwarder = RNQS:new(30002,
                                                    end)
                              return ok
                           end)
+                          
+acksender = RNQC:new(20001)
+ackForwarder = RNQS:new(20000,
+                        function (payload, ip, port)
+                            local toIP = payload["toIP"]
+                            payload["toIP"] = nil
+                            print("Forwarding ack")
+                            acksender:sendMessage(payload,
+                                                  toIP,
+                                                  20000,
+                                                  100,
+                                                  100 * storm.os.MILLISECOND,
+                                                  nil
+                                                  function (msg)
+                                                      if msg == nil then
+                                                          print("Successfully forwarded ack")
+                                                      else
+                                                          print("Did not successfully forward ack")
+                                                      end
+                                                  end)
+                           return ok
+                       end)
+                        end)
+                        
                                  
 -- Synchronize time with server every 20 seconds
 time_sync = RNQC:new(30003)

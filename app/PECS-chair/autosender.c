@@ -68,7 +68,14 @@ int init_autosender(lua_State* L) {
     lua_call(L, 3, 1);
     lua_setglobal(L, "__ack_server");
     
-    printf("Created RNQ Server...\n");
+    // Create new RNQ Client to send requests
+    lua_pushlightfunction(L, rnqclient_new);
+    lua_pushnil(L);
+    lua_pushnumber(L, 20001);
+    lua_call(L, 2, 1);
+    lua_setglobal(L, "__data_client");
+    
+    printf("Created RNQ Client...\n");
     
     lua_pushlightfunction(L, enqueue_flash_task);
     lua_pushlightfunction(L, read_bp);
@@ -355,7 +362,7 @@ int try_send(lua_State* L) {
     
     // try to send via 15.4
     lua_pushlightfunction(L, rnqclient_sendMessage);
-    lua_getglobal(L, "rnqcl"); // an RNQ Client
+    lua_getglobal(L, "__data_client"); // an RNQ Client
     lua_getglobal(L, "__rnqMessage");
     lua_pushstring(L, "ff02::1");
     lua_pushnumber(L, 30002);
@@ -381,11 +388,11 @@ int register_ack(lua_State* L) {
         printf("Got expected ack. registering...\n");
         expected_ack = 0xFFFFFFFF;
         lua_pushlightfunction(L, rnqclient_empty);
-        lua_getglobal(L, "rnqcl");
+        lua_getglobal(L, "__data_client");
         lua_call(L, 1, 0);
         
         lua_pushlightfunction(L, rnqclient_cancelMessage);
-        lua_getglobal(L, "rnqcl");
+        lua_getglobal(L, "__data_client");
         lua_call(L, 1, 0);
         
         lua_pushnumber(L, received_ack);

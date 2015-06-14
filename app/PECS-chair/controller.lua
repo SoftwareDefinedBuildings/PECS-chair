@@ -39,6 +39,7 @@ function time_sync_handler(msg)
         storm.n.autosender_register_time_sync()
     end
 end
+
 empty = {}
 time_sync = storm.n.RNQClient:new(60003)
 function sync_time()

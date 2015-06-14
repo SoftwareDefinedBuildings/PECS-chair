@@ -64,14 +64,12 @@ end
 local sendHandler = function (message) if message ~= nil then print("Success!") else print("15.4 Failed") end end
 
 rnqcl = storm.n.RNQClient:new(30000)
---[[function updateSMAP()
+function updateSMAP()
    -- Update sMAP
    local temp
    local humidity
    temp, humidity = storm.n.get_temp_humidity(storm.n.CELSIUS)
    local pyld = { storm.os.nodeid(), storm.n.check_occupancy(), heaterSettings[storm.n.BACK_HEATER], heaterSettings[storm.n.BOTTOM_HEATER], fanSettings[storm.n.BACK_FAN], fanSettings[storm.n.BOTTOM_FAN], temp, humidity }
-   
-   send_time = storm.n.get_time_always()
    
    -- Update the phone
    local occ = 0
@@ -85,12 +83,12 @@ rnqcl = storm.n.RNQClient:new(30000)
    storm.n.enqueue_flash_task(storm.n.flash_write_log, storm.n.get_time_diff(), pyld[3], pyld[4], pyld[5], pyld[6], temp, humidity, occ, false,
        function ()
            print("Logged")
-           rnqcl:sendMessage(pyld, "ff02::1", 30002, 175, 100 * storm.os.MILLISECOND, nil, sendHandler)
+           rnqcl:sendMessage(pyld, "ff02::1", 30002, 150, 100 * storm.os.MILLISECOND, nil, sendHandler)
        end)
    print("Updated")
-end]]
+end
 
-function logDataPoint()
+--[[function logDataPoint()
     local temp
     local humidity
     local occ
@@ -111,9 +109,9 @@ function logDataPoint()
                                occ,
                                false,
                                function () print("Logged") end)
-end
+end]]
 
-storm.os.invokePeriodically(5 * storm.os.SECOND, logDataPoint)
+storm.os.invokePeriodically(20 * storm.os.SECOND, updateSMAP) -- For synchronization
 
 local last_occupancy_state = false
 storm.os.invokePeriodically(
