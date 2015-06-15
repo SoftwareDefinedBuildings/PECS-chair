@@ -42,7 +42,7 @@ end]]
 from_server = RNQS:new(60001, sendActuationMessage)
 to_server = RNQC:new(30001)
 
-chairForwarder = RNQS:new(30002,
+chairForwarder = RNQS:new(38003,
                           function (payload, ip, port)
                              print(ip)
                              print("Length: " .. #payload)
@@ -112,7 +112,7 @@ synctime()
 storm.os.invokePeriodically(20 * storm.os.SECOND, synctime)
     
 -- Allow chairs to synchronize time with firestorm
-synchronizer = RNQS:new(30004, function () print("Got synchronization request") return {["time"] = storm.n.get_time()} end)
+synchronizer = RNQS:new(38002, function () print("Got synchronization request") return {["time"] = storm.n.get_time()} end)
 
 while true do
     storm.os.wait_callback()

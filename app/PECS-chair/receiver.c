@@ -257,11 +257,18 @@ int get_time_diff(lua_State* L) {
 }
 
 int set_time_diff(lua_State* L) {
-    int32_t newtimediff = (int32_t) luaL_checkint(L, 1);
+    int32_t timediffdiff = (int32_t) luaL_checkint(L, 1);
+    lua_pushlightfunction(L, get_kernel_secs);
+    lua_call(L, 0, 1);
+    int32_t time = (int32_t) lua_tointeger(L, -1) + timediff + timediffdiff;
+    if (time < 1400000000 || time > 1600000000) {
+        printf("Time synchronization fails sanity check.\n");
+        return 0; // a sanity check, to make sure the time is not something crazy
+    }
     if (timediff) {
-        timediff = (int32_t) (timediff + ALPHA * newtimediff);
+        timediff = (int32_t) (timediff + ALPHA * timediffdiff);
     } else {
-        timediff = newtimediff;
+        timediff = timediffdiff;
     }
     return 0;
 }

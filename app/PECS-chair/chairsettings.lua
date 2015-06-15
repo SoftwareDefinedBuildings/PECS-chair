@@ -17,6 +17,8 @@ fans = {storm.n.BOTTOM_FAN, storm.n.BACK_FAN}
 
 heaters = {storm.n.BOTTOM_HEATER, storm.n.BACK_HEATER}
 
+data_ip = "ff02::1" -- Where to send the data. ff02::1 to use firestorm proxy
+
 -- SETTING is from 0 to 100
 function setHeater(heater, setting)
    heaterSettings[heater] = setting
@@ -83,7 +85,7 @@ function updateSMAP()
    storm.n.enqueue_flash_task(storm.n.flash_write_log, storm.n.get_time_diff(), pyld[3], pyld[4], pyld[5], pyld[6], temp, humidity, occ, false,
        function ()
            print("Logged")
-           rnqcl:sendMessage(pyld, "ff02::1", 30002, 150, 100 * storm.os.MILLISECOND, nil, sendHandler)
+           rnqcl:sendMessage(pyld, data_ip, 38003, 150, 100 * storm.os.MILLISECOND, nil, sendHandler)
        end)
    print("Updated")
 end

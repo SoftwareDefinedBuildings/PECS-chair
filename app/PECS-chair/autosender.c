@@ -372,8 +372,8 @@ int try_send(lua_State* L) {
     lua_pushlightfunction(L, rnqclient_sendMessage);
     lua_getglobal(L, "__data_client"); // an RNQ Client
     lua_getglobal(L, "__rnqMessage");
-    lua_pushstring(L, "ff02::1");
-    lua_pushnumber(L, 30002);
+    lua_getglobal(L, "data_ip");
+    lua_pushnumber(L, 38003);
     lua_pushnumber(L, 175);
     lua_pushnumber(L, 100 * MILLISECOND_TICKS);
     lua_pushnil(L);

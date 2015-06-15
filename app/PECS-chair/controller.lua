@@ -46,8 +46,8 @@ function sync_time()
     send_time = storm.n.get_time_always()
     print("asking for time")
     time_sync:sendMessage(empty,
-                          "ff02::1",
-                          30004,
+                          data_ip,
+                          38002,
                           250,
                           200 * storm.os.MILLISECOND,
                           nil,
