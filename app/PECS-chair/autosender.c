@@ -7,6 +7,8 @@ uint32_t expected_ack = 0xFFFFFFFF;
 int session_bp = 0; // the bp for the reboot corresponding to this session
 int32_t curr_diff = 0; // the offset we are currently using for relative timestamps
 
+int in_current_session = 0;
+
 int32_t registered_synchronization = 0;
 
 /*
@@ -107,7 +109,7 @@ int ack_handler(lua_State* L) {
 }
 
 int finished_send_message(lua_State* L) {
-    printf("Finished sending log entry...\n");
+    printf("Finished setup cycle\n");
     return 0;
 }
 
@@ -189,9 +191,12 @@ int take_entry_action(lua_State* L) {
     int sp = luaL_checkint(L, 1);
     int cp = luaL_checkint(L, 2);
     int bo = luaL_checkint(L, 3);
+    if (cp == session_bp) {
+        in_current_session = 1;
+    }
     printf("sp = %d, cp = %d, bo = %d\n", sp, cp, bo);
     curr_diff = (int32_t) bo;
-    if (cp == sp || (cp >= session_bp && !timediff)) {
+    if (cp == sp || (in_current_session && !timediff)) {
         // We're publishing realtime data now OR we're entering the data for this session, but haven't synchronized time yet
         // So, we'll wait a bit and try again
         printf("Wait a bit and try again\n");

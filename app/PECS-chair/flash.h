@@ -11,6 +11,8 @@
 #define FIRST_VALID_ADDR 768
 #define FIRST_INVALID_ADDR 7340032
 
+#define CACHE_INVALID 0xFFFFFFFF
+
 int read_sp(lua_State* L);
 int write_sp(lua_State* L);
 
@@ -20,6 +22,7 @@ int libstorm_flash_write(lua_State* L);
 
 #define FLASH_SYMBOLS \
     { LSTRKEY("get_kernel_secs"), LFUNCVAL(get_kernel_secs) }, \
+    { LSTRKEY("flash_clear_cache"), LFUNCVAL(clear_superblock_cache) }, \
     { LSTRKEY("flash_init"), LFUNCVAL(flash_init) }, \
     { LSTRKEY("flash_read_sp"), LFUNCVAL(read_sp) }, \
     { LSTRKEY("flash_write_sp"), LFUNCVAL(write_sp) }, \

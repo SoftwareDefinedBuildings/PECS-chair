@@ -1,9 +1,16 @@
 #include "libstormarray.h"
 #include "flash.h"
 
-uint32_t cached_sp = 0;
-uint32_t cached_cp = 0;
-uint32_t cached_bo = 0;
+uint32_t cached_sp = CACHE_INVALID;
+uint32_t cached_cp = CACHE_INVALID;
+uint32_t cached_bo = CACHE_INVALID;
+
+int clear_superblock_cache(lua_State* L) {
+    cached_sp = CACHE_INVALID;
+    cached_cp = CACHE_INVALID;
+    cached_bo = CACHE_INVALID;
+    return 0;
+}
 
 int call_fn(lua_State* L) {
     lua_pushvalue(L, lua_upvalueindex(1));
@@ -207,7 +214,7 @@ int read_p(lua_State* L, int offset) {
 
 // read_sp(cb)
 int read_sp(lua_State* L) {
-    if (cached_sp) { // cache hit
+    if (cached_sp != CACHE_INVALID) { // cache hit
         lua_pushvalue(L, 1);
         lua_pushnumber(L, cached_sp);
         lua_call(L, 1, 0);
@@ -217,7 +224,7 @@ int read_sp(lua_State* L) {
 }
 
 int read_bo(lua_State* L) {
-    if (cached_bo) { // cache hit
+    if (cached_bo != CACHE_INVALID) { // cache hit
         lua_pushvalue(L, 1);
         lua_pushnumber(L,cached_bo);
         lua_call(L, 1, 0);
@@ -227,7 +234,7 @@ int read_bo(lua_State* L) {
 }
 
 int read_cp(lua_State* L) {
-    if (cached_cp) { // cache hit
+    if (cached_cp != CACHE_INVALID) { // cache hit
         lua_pushvalue(L, 1);
         lua_pushnumber(L, cached_cp);
         lua_call(L, 1, 0);
@@ -571,7 +578,7 @@ int write_log_entry_2(lua_State* L) {
 uint32_t next_p(uint32_t p) {
     uint32_t new_p = p + LOG_ENTRY_LEN;
     uint32_t next_page = ((new_p >> PAGE_EXP) + 1) << PAGE_EXP;
-    if (next_page - new_p < LOG_ENTRY_LEN) {
+    if ((next_page - new_p) < LOG_ENTRY_LEN) {
         new_p = next_page;
     }
     if (new_p >= FIRST_INVALID_ADDR) {
