@@ -13,11 +13,11 @@ int32_t registered_synchronization = 0;
 sp = "store pointer": the memory address where the next log entry will be stored
 cp = "current pointer": the memory address of the next log entry to be processed
 bp = "base pointer": the memory address of the reboot log entry corresponding to the last processed entry
+bo = "base offset": the time offset contained in the log entry that the bp refers to
 */
 
 int ack_handler(lua_State* L);
 int init_autosender_1(lua_State* L);
-int init_autosender_2(lua_State* L);
 int begin_send_iter(lua_State* L);
 
 int empty(lua_State* L); // implemented in rnq.c
@@ -78,7 +78,7 @@ int init_autosender(lua_State* L) {
     printf("Created RNQ Client...\n");
     
     lua_pushlightfunction(L, enqueue_flash_task);
-    lua_pushlightfunction(L, read_bp);
+    lua_pushlightfunction(L, read_bo);
     lua_pushlightfunction(L, init_autosender_1);
     lua_call(L, 2, 0);
     return 0;
@@ -86,16 +86,6 @@ int init_autosender(lua_State* L) {
 
 int init_autosender_1(lua_State* L) {
     printf("init_autosender_1\n");
-    lua_pushlightfunction(L, enqueue_flash_task);
-    lua_pushlightfunction(L, read_log_entry_addr);
-    lua_pushvalue(L, 1);
-    lua_pushlightfunction(L, init_autosender_2);
-    lua_call(L, 3, 0);
-    return 0;
-}
-
-int init_autosender_2(lua_State* L) {
-    printf("init_autosender_2\n");
     curr_diff = lua_tointeger(L, 1);
     lua_pushlightfunction(L, begin_send_iter);
     lua_call(L, 0, 0);
@@ -150,7 +140,7 @@ int start_process_loop(lua_State* L) {
 
 // Callbacks to read sp and cp
 // read_pointers(cb)
-// calls cb with three arguments, namely sp, cp, and bp
+// calls cb with three arguments, namely sp, cp, and bo
 
 int read_pointers_1(lua_State* L);
 int read_pointers_2(lua_State* L);
@@ -174,7 +164,7 @@ int read_pointers_1(lua_State* L) {
 }
 
 int read_pointers_2(lua_State* L) {
-    lua_pushlightfunction(L, read_bp);
+    lua_pushlightfunction(L, read_bo);
     lua_pushvalue(L, lua_upvalueindex(1)); // the callback
     lua_pushvalue(L, lua_upvalueindex(2)); // sp
     lua_pushvalue(L, 1); // cp
@@ -188,7 +178,7 @@ int read_pointers_3(lua_State* L) {
     lua_pushvalue(L, lua_upvalueindex(1)); // the callback
     lua_pushvalue(L, lua_upvalueindex(2)); // sp
     lua_pushvalue(L, lua_upvalueindex(3)); // cp
-    lua_pushvalue(L, 1); // bp
+    lua_pushvalue(L, 1); // bo
     lua_call(L, 3, 0);
     return 0;
 }
@@ -198,9 +188,10 @@ int dispatch_log_entry(lua_State* L);
 int take_entry_action(lua_State* L) {
     int sp = luaL_checkint(L, 1);
     int cp = luaL_checkint(L, 2);
-    int bp = luaL_checkint(L, 3);
-    printf("sp = %d, cp = %d, bp = %d\n", sp, cp, bp);
-    if (cp >= sp || (cp >= session_bp && !timediff)) {
+    int bo = luaL_checkint(L, 3);
+    printf("sp = %d, cp = %d, bo = %d\n", sp, cp, bo);
+    curr_diff = (int32_t) bo;
+    if (cp == sp || (cp >= session_bp && !timediff)) {
         // We're publishing realtime data now OR we're entering the data for this session, but haven't synchronized time yet
         // So, we'll wait a bit and try again
         printf("Wait a bit and try again\n");
@@ -233,8 +224,8 @@ int dispatch_log_entry(lua_State* L) {
     if (rebooted) {
         printf("Handling reboot...\n");
         curr_diff = (uint32_t) lua_tointeger(L, 1);
-        lua_pushlightfunction(L, write_bp);
-        lua_pushvalue(L, lua_upvalueindex(1));
+        lua_pushlightfunction(L, write_bo);
+        lua_pushnumber(L, curr_diff);
         lua_pushvalue(L, lua_upvalueindex(1));
         lua_pushcclosure(L, finish_processing_reboot_entry, 1);
         lua_call(L, 2, 0);

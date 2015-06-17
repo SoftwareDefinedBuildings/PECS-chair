@@ -10,7 +10,7 @@ int call_fn(lua_State* L) {
 
 int delay_handler(lua_State* L) {
     lua_pushlightfunction(L, libstorm_os_invoke_later);
-    lua_pushnumber(L, 30 * MILLISECOND_TICKS);
+    lua_pushnumber(L, 35 * MILLISECOND_TICKS);
     lua_pushvalue(L, lua_upvalueindex(1));
     lua_call(L, 2, 0);
     return 0;
@@ -206,8 +206,8 @@ int read_sp(lua_State* L) {
     return read_p(L, SP_OFFSET);
 }
 
-int read_bp(lua_State* L) {
-    return read_p(L, BP_OFFSET);
+int read_bo(lua_State* L) {
+    return read_p(L, BO_OFFSET);
 }
 
 int read_cp(lua_State* L) {
@@ -278,8 +278,9 @@ int read_sp_tail(lua_State* L) {
     int sp1 = lua_tointeger(L, 1);
     int sp2 = lua_tointeger(L, 2);
     int sp3 = lua_tointeger(L, 3);
+    int offset = lua_tointeger(L, lua_upvalueindex(5));
     int sp;
-    if (sp1 == sp2 && sp2 == sp3 && sp1 >= 0 && sp1 < 0x600000) {
+    if (sp1 == sp2 && sp2 == sp3 && ((sp1 >= FIRST_VALID_ADDR && sp1 < FIRST_INVALID_ADDR) || (offset == BO_OFFSET))) {
         lua_pushvalue(L, lua_upvalueindex(1));
         lua_pushnumber(L, sp1);
         lua_call(L, 1, 0);
@@ -294,12 +295,10 @@ int read_sp_tail(lua_State* L) {
         } else {
             sp = sp3;
         }
-        if (sp < 0 || sp >= 0x600000) {
+        if ((sp < FIRST_VALID_ADDR || sp >= FIRST_INVALID_ADDR) && offset != BO_OFFSET) {
             printf("Log overflowed: resetting log\n");
             sp = 3 << PAGE_EXP;
         }
-        lua_pushlightfunction(L, libstorm_os_invoke_later);
-        lua_pushnumber(L, 70 * MILLISECOND_TICKS);
         
         lua_pushnumber(L, sp);
         lua_pushvalue(L, lua_upvalueindex(5)); // the offset
@@ -307,9 +306,8 @@ int read_sp_tail(lua_State* L) {
         lua_pushnumber(L, sp);
         lua_pushcclosure(L, call_fn, 2);
         lua_pushcclosure(L, update_p, 3);
-        lua_pushcclosure(L, delay_handler, 1);
         
-        lua_call(L, 2, 0);
+        lua_call(L, 0, 0);
     }
     return 0;
 }
@@ -342,8 +340,8 @@ int write_sp(lua_State* L) {
     return write_p(L, SP_OFFSET);
 }
 
-int write_bp(lua_State* L) {
-    return write_p(L, BP_OFFSET);
+int write_bo(lua_State* L) {
+    return write_p(L, BO_OFFSET);
 }
 
 int write_cp(lua_State* L) {
@@ -474,6 +472,7 @@ int update_time(lua_State* L) {
     Total of 112 bits (14 bytes) per entry
 **/
 
+int write_log_entry_2(lua_State* L);
 int write_log_entry_cb(lua_State* L);
 int write_log_entry_cleanup(lua_State* L);
 
@@ -526,23 +525,21 @@ int write_log_entry(lua_State* L) {
     }
     
     // read the stack pointer, write, and then update it
-    lua_pushlightfunction(L, read_sp);
+    lua_pushlightfunction(L, read_cp);
     lua_pushvalue(L, arr_index);
     lua_pushvalue(L, 10); // the callback
-    lua_pushcclosure(L, write_log_entry_cb, 2);
+    lua_pushcclosure(L, write_log_entry_2, 2);
     lua_call(L, 1, 0);
     return 0;
 }
 
-int write_log_entry_cb(lua_State* L) {
-    lua_pushlightfunction(L, libstorm_flash_write);
-    lua_pushvalue(L, 1);
+int write_log_entry_2(lua_State* L) {
+    lua_pushlightfunction(L, read_sp);
     lua_pushvalue(L, lua_upvalueindex(1));
-    lua_pushvalue(L, 1);
     lua_pushvalue(L, lua_upvalueindex(2));
-    lua_pushcclosure(L, write_log_entry_cleanup, 2);
-    lua_pushcclosure(L, delay_handler, 1);
-    lua_call(L, 3, 0);
+    lua_pushvalue(L, 1);
+    lua_pushcclosure(L, write_log_entry_cb, 3);
+    lua_call(L, 1, 0);
     return 0;
 }
 
@@ -552,7 +549,31 @@ uint32_t next_p(uint32_t p) {
     if (next_page - new_p < LOG_ENTRY_LEN) {
         new_p = next_page;
     }
+    if (new_p >= FIRST_INVALID_ADDR) {
+        new_p = FIRST_VALID_ADDR;
+    }
     return new_p;
+}
+
+int write_log_entry_cb(lua_State* L) {
+    uint32_t cp = (uint32_t) lua_tointeger(L, lua_upvalueindex(3));
+    uint32_t sp = (uint32_t) lua_tointeger(L, 1);
+    if (next_p(sp) == cp) {
+        printf("Skipping write\n");
+        lua_pushvalue(L, lua_upvalueindex(2));
+        lua_pushcclosure(L, delay_handler, 1);
+        lua_call(L, 0, 0);
+        return 0; // don't write
+    }
+    lua_pushlightfunction(L, libstorm_flash_write);
+    lua_pushvalue(L, 1);
+    lua_pushvalue(L, lua_upvalueindex(1));
+    lua_pushvalue(L, 1);
+    lua_pushvalue(L, lua_upvalueindex(2));
+    lua_pushcclosure(L, write_log_entry_cleanup, 2);
+    lua_pushcclosure(L, delay_handler, 1);
+    lua_call(L, 3, 0);
+    return 0;
 }
 
 int write_log_entry_cleanup(lua_State* L) {

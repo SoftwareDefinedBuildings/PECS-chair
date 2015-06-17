@@ -35,8 +35,9 @@ function time_sync_handler(msg)
         local recv_time = storm.n.get_time_always()
         local diff = storm.n.compute_time_diff(send_time, msg.time, msg.time, recv_time)
         print("Calculated diff " .. diff)
-        storm.n.set_time_diff(diff)
-        storm.n.autosender_register_time_sync()
+        if storm.n.set_time_diff(diff) then
+            storm.n.autosender_register_time_sync()
+        end
     end
 end
 
