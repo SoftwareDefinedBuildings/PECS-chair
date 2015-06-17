@@ -1,6 +1,10 @@
 #include "libstormarray.h"
 #include "flash.h"
 
+uint32_t cached_sp = 0;
+uint32_t cached_cp = 0;
+uint32_t cached_bo = 0;
+
 int call_fn(lua_State* L) {
     lua_pushvalue(L, lua_upvalueindex(1));
     lua_pushvalue(L, lua_upvalueindex(2));
@@ -203,15 +207,33 @@ int read_p(lua_State* L, int offset) {
 
 // read_sp(cb)
 int read_sp(lua_State* L) {
-    return read_p(L, SP_OFFSET);
+    if (cached_sp) { // cache hit
+        lua_pushvalue(L, 1);
+        lua_pushnumber(L, cached_sp);
+        lua_call(L, 1, 0);
+        return 0;
+    }
+    return read_p(L, SP_OFFSET); // cache miss
 }
 
 int read_bo(lua_State* L) {
-    return read_p(L, BO_OFFSET);
+    if (cached_bo) { // cache hit
+        lua_pushvalue(L, 1);
+        lua_pushnumber(L,cached_bo);
+        lua_call(L, 1, 0);
+        return 0;
+    }
+    return read_p(L, BO_OFFSET); // cache miss
 }
 
 int read_cp(lua_State* L) {
-    return read_p(L, CP_OFFSET);
+    if (cached_cp) { // cache hit
+        lua_pushvalue(L, 1);
+        lua_pushnumber(L, cached_cp);
+        lua_call(L, 1, 0);
+        return 0;
+    }
+    return read_p(L, CP_OFFSET); // cache miss
 }
 
 int read_sp_1(lua_State* L) {
@@ -337,14 +359,17 @@ int write_p(lua_State* L, int offset) {
 }
 
 int write_sp(lua_State* L) {
+    cached_sp = (uint32_t) luaL_checkint(L, 1); // cache the value we're about to write in memory
     return write_p(L, SP_OFFSET);
 }
 
 int write_bo(lua_State* L) {
+    cached_bo = (uint32_t) luaL_checkint(L, 1);  // cache the value we're about to write in memory
     return write_p(L, BO_OFFSET);
 }
 
 int write_cp(lua_State* L) {
+    cached_cp = (uint32_t) luaL_checkint(L, 1); // cache the value we're about to write in memory
     return write_p(L, CP_OFFSET);
 }
 
