@@ -1,5 +1,6 @@
 #define ALPHA 0.2
 
+int chairsettings_init(lua_State* L);
 int set_heater(lua_State* L);
 int set_fan(lua_State* L);
 int get_heater(lua_State* L);
@@ -12,6 +13,7 @@ int set_time_diff(lua_State* L);
 int compute_time_diff(lua_State* L);
 
 #define CHAIRSETTINGS_SYMBOLS \
+    { LSTRKEY( "chairsettings_init"), LFUNCVAL( chairsettings_init ) }, \
     { LSTRKEY( "set_heater" ), LFUNCVAL( set_heater ) }, \
     { LSTRKEY( "set_fan" ), LFUNCVAL( set_fan ) }, \
     { LSTRKEY( "get_heater" ), LFUNCVAL( get_heater ) }, \

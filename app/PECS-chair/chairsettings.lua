@@ -1,17 +1,6 @@
 local Settings = {}
 
-storm.n.set_occupancy_mode(storm.n.ENABLE)
-storm.n.set_heater_mode(storm.n.BOTTOM_HEATER, storm.n.ENABLE)
-storm.n.set_heater_mode(storm.n.BACK_HEATER, storm.n.ENABLE)
-storm.n.set_fan_mode(storm.n.ENABLE)
-storm.n.set_temp_mode(storm.n.ENABLE)
-
-storm.n.set_heater_state(storm.n.BOTTOM_HEATER, storm.n.OFF)
-storm.n.set_heater_state(storm.n.BACK_HEATER, storm.n.OFF)
-storm.n.set_fan_state(storm.n.BOTTOM_FAN, storm.n.OFF)
-storm.n.set_fan_state(storm.n.BACK_FAN, storm.n.OFF)
-
-__rnqcl = storm.n.RNQClient:new(30000)
+storm.n.chairsettings_init()
 
 fans = {storm.n.BOTTOM_FAN, storm.n.BACK_FAN}
 heaters = {storm.n.BOTTOM_HEATER, storm.n.BACK_HEATER}

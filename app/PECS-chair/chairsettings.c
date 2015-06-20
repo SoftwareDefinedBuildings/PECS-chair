@@ -1,5 +1,75 @@
 #include "chairsettings.h"
 
+/* The initialization function does the work needed to set up physical chair actuation
+   and provide and API to control the chair. It corresponds to the following Lua code:
+   
+storm.n.set_occupancy_mode(storm.n.ENABLE)
+storm.n.set_heater_mode(storm.n.BOTTOM_HEATER, storm.n.ENABLE)
+storm.n.set_heater_mode(storm.n.BACK_HEATER, storm.n.ENABLE)
+storm.n.set_fan_mode(storm.n.ENABLE)
+storm.n.set_temp_mode(storm.n.ENABLE)
+
+storm.n.set_heater_state(storm.n.BOTTOM_HEATER, storm.n.OFF)
+storm.n.set_heater_state(storm.n.BACK_HEATER, storm.n.OFF)
+storm.n.set_fan_state(storm.n.BOTTOM_FAN, storm.n.OFF)
+storm.n.set_fan_state(storm.n.BACK_FAN, storm.n.OFF)
+
+__rnqcl = storm.n.RNQClient:new(30000)
+
+*/
+
+int chairsettings_init(lua_State* L) {
+    lua_pushlightfunction(L, set_occupancy_mode);
+    lua_pushnumber(L, ENABLE);
+    lua_call(L, 1, 0);
+    
+    lua_pushlightfunction(L, set_heater_mode);
+    lua_pushnumber(L, BOTTOM_HEATER);
+    lua_pushnumber(L, ENABLE);
+    lua_call(L, 2, 0);
+    
+    lua_pushlightfunction(L, set_heater_mode);
+    lua_pushnumber(L, BACK_HEATER);
+    lua_pushnumber(L, ENABLE);
+    lua_call(L, 2, 0);
+    
+    lua_pushlightfunction(L, set_fan_mode);
+    lua_pushnumber(L, ENABLE);
+    lua_call(L, 1, 0);
+    
+    lua_pushlightfunction(L, set_temp_mode);
+    lua_pushnumber(L, ENABLE);
+    lua_call(L, 1, 0);
+    
+    lua_pushlightfunction(L, set_heater_state);
+    lua_pushnumber(L, BOTTOM_HEATER);
+    lua_pushnumber(L, OFF);
+    lua_call(L, 2, 0);
+    
+    lua_pushlightfunction(L, set_heater_state);
+    lua_pushnumber(L, BACK_HEATER);
+    lua_pushnumber(L, OFF);
+    lua_call(L, 2, 0);
+    
+    lua_pushlightfunction(L, set_fan_state);
+    lua_pushnumber(L, BOTTOM_FAN);
+    lua_pushnumber(L, OFF);
+    lua_call(L, 2, 0);
+    
+    lua_pushlightfunction(L, set_fan_state);
+    lua_pushnumber(L, BACK_FAN);
+    lua_pushnumber(L, OFF);
+    lua_call(L, 2, 0);
+    
+    lua_pushlightfunction(L, rnqclient_new);
+    lua_pushnil(L);
+    lua_pushnumber(L, 30000);
+    lua_call(L, 2, 1);
+    lua_setglobal(L, "__rnqcl");
+    
+    return 0;
+}
+
 /* These global variables store the current settings, and correspond to the following Lua code
 
 heaterSettings = {[storm.n.BOTTOM_HEATER] = 0, [storm.n.BACK_HEATER] = 0}
