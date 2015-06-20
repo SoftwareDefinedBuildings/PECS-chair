@@ -5,7 +5,7 @@ BL_CTL = storm.io.D5
 storm.io.set_mode(storm.io.OUTPUT, BL_CTL)
 storm.io.set(0, BL_CTL)
 
-ChairSettings = require "chairsettings"
+storm.n.chairsettings_init()
 
 data_ip = "ff02::1" -- Where to send the data. ff02::1 to use firestorm proxy
 

@@ -1,7 +1,11 @@
 #include "chairsettings.h"
 
 /* The initialization function does the work needed to set up physical chair actuation
-   and provide and API to control the chair. It corresponds to the following Lua code:
+   and provide and API to control the chair. It also begins these processes and repeatedly
+   sends the current state over both bluetooth and 802.15.4 and logs the data to flash
+   memory.
+   
+   It corresponds to the following Lua code:
    
 storm.n.set_occupancy_mode(storm.n.ENABLE)
 storm.n.set_heater_mode(storm.n.BOTTOM_HEATER, storm.n.ENABLE)
@@ -16,7 +20,27 @@ storm.n.set_fan_state(storm.n.BACK_FAN, storm.n.OFF)
 
 __rnqcl = storm.n.RNQClient:new(30000)
 
+storm.n.flash_init()
+storm.n.enqueue_flash_task(storm.n.flash_read_sp, storm.n.autosender_init)
+storm.n.enqueue_flash_task(storm.n.flash_write_log, nil, 0, 0, 0, 0, 0, 0, 0, true, function () print("Logging reboot") end)
+storm.n.enqueue_flash_task(storm.n.flash_get_saved_settings, function (backh, bottomh, backf, bottomf, timediff)
+    storm.n.set_heater(storm.n.BACK_HEATER, backh)
+    storm.n.set_heater(storm.n.BOTTOM_HEATER, bottomh)
+    storm.n.set_fan(storm.n.BACK_FAN, backf)
+    storm.n.set_fan(storm.n.BOTTOM_FAN, bottomf)
+    storm.n.set_time_diff(timediff)
+end)
+storm.n.enqueue_flash_task(storm.n.flash_save_settings, 0, 0, 0, 0, 0, function () print("Cleared saved settings") end) -- So it turns off if the user taps the screen
+
+storm.os.invokePeriodically(20 * storm.os.SECOND, storm.n.update_server) -- For synchronization
+storm.n.modulate_heaters() -- Already a derivative
+storm.n.modulate_fans() -- Already a derivative
+
 */
+
+int confirm_reboot(lua_State* L);
+int set_curr_state(lua_State* L);
+int confirm_clear(lua_State* L);
 
 int chairsettings_init(lua_State* L) {
     lua_pushlightfunction(L, set_occupancy_mode);
@@ -67,6 +91,92 @@ int chairsettings_init(lua_State* L) {
     lua_call(L, 2, 1);
     lua_setglobal(L, "__rnqcl");
     
+    lua_pushlightfunction(L, flash_init);
+    lua_call(L, 0, 0);
+    
+    lua_pushlightfunction(L, enqueue_flash_task);
+    lua_pushlightfunction(L, read_sp);
+    lua_pushlightfunction(L, init_autosender);
+    lua_call(L, 2, 2);
+    
+    lua_pushlightfunction(L, enqueue_flash_task);
+    lua_pushlightfunction(L, write_log_entry);
+    lua_pushnil(L);
+    int i;
+    for (i = 0; i < 7; i++) {
+        lua_pushnumber(L, 0);
+    }
+    lua_pushboolean(L, 1);
+    lua_pushlightfunction(L, confirm_reboot);
+    lua_call(L, 11, 0);
+    
+    lua_pushlightfunction(L, enqueue_flash_task);
+    lua_pushlightfunction(L, get_saved_settings);
+    lua_pushlightfunction(L, set_curr_state);
+    lua_call(L, 2, 0);
+    
+    lua_pushlightfunction(L, enqueue_flash_task);
+    lua_pushlightfunction(L, save_settings);
+    for (i = 0; i < 5; i++) {
+        lua_pushnumber(L, 0);
+    }
+    lua_pushlightfunction(L, confirm_clear);
+    lua_call(L, 7, 0);
+    
+    lua_pushlightfunction(L, libstorm_os_invoke_periodically);
+    lua_pushnumber(L, 20 * SECOND_TICKS);
+    lua_pushlightfunction(L, update_server);
+    lua_call(L, 2, 0);
+    
+    lua_pushlightfunction(L, modulate_heaters);
+    lua_call(L, 0, 0);
+    
+    lua_pushlightfunction(L, modulate_fans);
+    lua_call(L, 0, 0);
+    
+    return 0;
+}
+
+int confirm_reboot(lua_State* L) {
+    printf("Logging reboot\n");
+    return 0;
+}
+
+int set_curr_state(lua_State* L) {
+    int i;
+    for (i = 1; i <= 5; i++) {
+        luaL_checkint(L, i); // check that all of the arguments are integers
+    }
+
+    lua_pushlightfunction(L, set_heater);
+    lua_pushnumber(L, BACK_HEATER);
+    lua_pushvalue(L, 1);
+    lua_call(L, 2, 0);
+    
+    lua_pushlightfunction(L, set_heater);
+    lua_pushnumber(L, BOTTOM_HEATER);
+    lua_pushvalue(L, 2);
+    lua_call(L, 2, 0);
+    
+    lua_pushlightfunction(L, set_fan);
+    lua_pushnumber(L, BACK_FAN);
+    lua_pushvalue(L, 3);
+    lua_call(L, 2, 0);
+    
+    lua_pushlightfunction(L, set_fan);
+    lua_pushnumber(L, BOTTOM_FAN);
+    lua_pushvalue(L, 4);
+    lua_call(L, 2, 0);
+    
+    lua_pushlightfunction(L, set_time_diff);
+    lua_pushvalue(L, 5);
+    lua_call(L, 1, 0);
+    
+    return 0;
+}
+
+int confirm_clear(lua_State* L) {
+    printf("Cleared saved settings\n");
     return 0;
 }
 
@@ -279,6 +389,143 @@ int send_handler(lua_State* L) {
     } else {
         printf("Success!\n");
     }
+    return 0;
+}
+
+/* Modulation of heaters. Corresponds to the following Lua code:
+
+function modulateHeater(heater)
+    storm.os.invokePeriodically(storm.os.SECOND, function ()
+        local setting = 10 * storm.n.get_heater(heater) * storm.os.MILLISECOND
+        if not storm.n.check_occupancy() then
+            setting = 0
+        end
+        if setting > 0 then
+            storm.n.set_heater_state(heater, storm.n.ON)
+        end
+        if setting < storm.os.SECOND then
+            storm.os.invokeLater(setting, storm.n.set_heater_state, heater, storm.n.OFF)
+        end
+    end)
+end
+
+for _, heater in pairs(heaters) do
+    storm.n.modulate_heater(heater)
+end
+
+*/
+
+int do_heater_cycle(lua_State* L);
+int modulate_heater(lua_State* L);
+
+int modulate_heaters(lua_State* L) {
+    int heater;
+    for (heater = 0; heater < NUM_HEATERS; heater++) {
+        lua_pushlightfunction(L, modulate_heater);
+        lua_pushnumber(L, heater);
+        lua_call(L, 1, 0);
+    }
+    return 0;
+}
+
+int modulate_heater(lua_State* L) {
+    luaL_checkint(L, 1);
+    lua_pushlightfunction(L, libstorm_os_invoke_periodically);
+    lua_pushnumber(L, SECOND_TICKS);
+    lua_pushvalue(L, 1);
+    lua_pushcclosure(L, do_heater_cycle, 1);
+    lua_call(L, 2, 0);
+    return 0;
+}
+
+int do_heater_cycle(lua_State* L) {
+    int heater = lua_tointeger(L, lua_upvalueindex(1));
+    int setting = 10 * heaterSettings[heater] * MILLISECOND_TICKS;
+    lua_pushlightfunction(L, check_occupancy);
+    lua_call(L, 0, 1);
+    if (!lua_toboolean(L, -1)) {
+        setting = 0;
+    }
+    if (setting > 0) {
+        lua_pushlightfunction(L, set_heater_state);
+        lua_pushnumber(L, heater);
+        lua_pushnumber(L, ON);
+        lua_call(L, 2, 0);
+    }
+    if (setting < SECOND_TICKS) {
+        lua_pushlightfunction(L, libstorm_os_invoke_later);
+        lua_pushnumber(L, setting);
+        lua_pushlightfunction(L, set_heater_state);
+        lua_pushnumber(L, heater);
+        lua_pushnumber(L, OFF);
+        lua_call(L, 4, 0);
+    }
+    return 0;
+}
+
+/* Modulation of fans. Corresponds to the following Lua code:
+
+local last_occupancy_state = false
+storm.os.invokePeriodically(
+   storm.os.SECOND,
+   function ()
+      local current_state = storm.n.check_occupancy()
+      if current_state and not last_occupancy_state then
+         for i = 1,#fans do
+            fan = fans[i]
+            storm.n.set_fan_state(fan, storm.n.quantize_fan(storm.n.get_fan(fan)))
+         end
+      elseif not current_state and last_occupancy_state then
+         for i = 1,#fans do
+            fan = fans[i]
+            storm.n.set_fan_state(fan, storm.n.OFF)
+         end
+      end
+      last_occupancy_state = current_state
+   end
+)
+
+*/
+
+int last_occupancy_state = 0;
+int check_fans(lua_State* L);
+
+int modulate_fans(lua_State* L) {
+    lua_pushlightfunction(L, libstorm_os_invoke_periodically);
+    lua_pushnumber(L, SECOND_TICKS);
+    lua_pushlightfunction(L, check_fans);
+    lua_call(L, 2, 0);
+    return 0;
+}
+
+int check_fans(lua_State* L) {
+    lua_pushlightfunction(L, check_occupancy);
+    lua_call(L, 0, 1);
+    int current_state = lua_toboolean(L, -1);
+    lua_pop(L, 1);
+    
+    int fan;
+    
+    if (current_state && !last_occupancy_state) {
+        for (fan = 0; fan < NUM_FANS; fan++) {
+            lua_pushlightfunction(L, set_fan_state);
+            lua_pushnumber(L, fan);
+            lua_pushlightfunction(L, quantize_fan);
+            lua_pushnumber(L, fanSettings[fan]);
+            lua_call(L, 1, 1);
+            lua_call(L, 2, 0);
+        }
+    } else if (!current_state && last_occupancy_state) {
+        for (fan = 0; fan < NUM_FANS; fan++) {
+            lua_pushlightfunction(L, set_fan_state);
+            lua_pushnumber(L, fan);
+            lua_pushnumber(L, OFF);
+            lua_call(L, 2, 0);
+        }
+    }
+    
+    last_occupancy_state = current_state;
+    
     return 0;
 }
 

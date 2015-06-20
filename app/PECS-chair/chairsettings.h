@@ -6,6 +6,8 @@ int set_fan(lua_State* L);
 int get_heater(lua_State* L);
 int get_fan(lua_State* L);
 int update_server(lua_State* L);
+int modulate_heaters(lua_State* L);
+int modulate_fans(lua_State* L);
 int get_time_always(lua_State* L);
 int get_time(lua_State* L);
 int get_time_diff(lua_State* L);
@@ -19,6 +21,8 @@ int compute_time_diff(lua_State* L);
     { LSTRKEY( "get_heater" ), LFUNCVAL( get_heater ) }, \
     { LSTRKEY( "get_fan" ), LFUNCVAL( get_fan ) }, \
     { LSTRKEY( "update_server" ), LFUNCVAL( update_server ) }, \
+    { LSTRKEY( "modulate_heaters" ), LFUNCVAL( modulate_heaters ) }, \
+    { LSTRKEY( "modulate_fans" ), LFUNCVAL( modulate_fans ) }, \
     { LSTRKEY( "to_hex_str" ), LFUNCVAL( to_hex_str ) }, \
     { LSTRKEY( "get_time_always" ), LFUNCVAL( get_time_always ) }, \
     { LSTRKEY( "get_time" ), LFUNCVAL( get_time ) }, \

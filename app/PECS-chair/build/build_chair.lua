@@ -10,7 +10,6 @@ autorun = "contrib/app/PECS-chair/controller.lua" --<< EDIT ME
 -- These are files that will be available as libraries. The name sets how they
 -- are 'require()'ed.
 libs = { --<< EDIT ME
-    chairsettings = "contrib/app/PECS-chair/chairsettings.lua"
 }
 
 
