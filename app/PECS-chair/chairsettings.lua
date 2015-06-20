@@ -13,14 +13,22 @@ storm.n.set_fan_state(storm.n.BACK_FAN, storm.n.OFF)
 
 __rnqcl = storm.n.RNQClient:new(30000)
 
-heaterSettings = {[storm.n.BOTTOM_HEATER] = 0, [storm.n.BACK_HEATER] = 0}
-fanSettings = {[storm.n.BOTTOM_FAN] = 0, [storm.n.BACK_FAN] = 0}
 fans = {storm.n.BOTTOM_FAN, storm.n.BACK_FAN}
 heaters = {storm.n.BOTTOM_HEATER, storm.n.BACK_HEATER}
 
-data_ip = "ff02::1" -- Where to send the data. ff02::1 to use firestorm proxy
+storm.n.flash_init()
+storm.n.enqueue_flash_task(storm.n.flash_read_sp, storm.n.autosender_init)
+storm.n.enqueue_flash_task(storm.n.flash_write_log, nil, 0, 0, 0, 0, 0, 0, 0, true, function () print("Logging reboot") end)
+storm.n.enqueue_flash_task(storm.n.flash_get_saved_settings, function (backh, bottomh, backf, bottomf, timediff)
+    storm.n.set_heater(storm.n.BACK_HEATER, backh)
+    storm.n.set_heater(storm.n.BOTTOM_HEATER, bottomh)
+    storm.n.set_fan(storm.n.BACK_FAN, backf)
+    storm.n.set_fan(storm.n.BOTTOM_FAN, bottomf)
+    storm.n.set_time_diff(timediff)
+end)
+storm.n.enqueue_flash_task(storm.n.flash_save_settings, 0, 0, 0, 0, 0, function () end) -- So it turns off if the user taps the screen
 
--- SETTING is from 0 to 100
+--[[-- SETTING is from 0 to 100
 function setHeater(heater, setting)
    heaterSettings[heater] = setting
 end
@@ -31,23 +39,11 @@ function setFan(fan, setting)
    if storm.n.check_occupancy() then
          storm.n.set_fan_state(fan, storm.n.quantize_fan(setting))
    end
-end
-
-storm.n.flash_init()
-storm.n.enqueue_flash_task(storm.n.flash_read_sp, storm.n.autosender_init)
-storm.n.enqueue_flash_task(storm.n.flash_write_log, nil, 0, 0, 0, 0, 0, 0, 0, true, function () print("Logging reboot") end)
-storm.n.enqueue_flash_task(storm.n.flash_get_saved_settings, function (backh, bottomh, backf, bottomf, timediff)
-    setHeater(storm.n.BACK_HEATER, backh)
-    setHeater(storm.n.BOTTOM_HEATER, bottomh)
-    setFan(storm.n.BACK_FAN, backf)
-    setFan(storm.n.BOTTOM_FAN, bottomf)
-    storm.n.set_time_diff(timediff)
-end)
-storm.n.enqueue_flash_task(storm.n.flash_save_settings, 0, 0, 0, 0, 0, function () end) -- So it turns off if the user taps the screen
+end]]
 
 function modulateHeater(heater)
     storm.os.invokePeriodically(storm.os.SECOND, function ()
-        local setting = 10 * heaterSettings[heater] * storm.os.MILLISECOND
+        local setting = 10 * storm.n.get_heater(heater) * storm.os.MILLISECOND
         if not storm.n.check_occupancy() then
             setting = 0
         end
@@ -122,7 +118,7 @@ storm.os.invokePeriodically(
       if current_state and not last_occupancy_state then
          for i = 1,#fans do
             fan = fans[i]
-            storm.n.set_fan_state(fan, storm.n.quantize_fan(fanSettings[fan]))
+            storm.n.set_fan_state(fan, storm.n.quantize_fan(storm.n.get_fan(fan)))
          end
       elseif not current_state and last_occupancy_state then
          for i = 1,#fans do
@@ -134,8 +130,8 @@ storm.os.invokePeriodically(
    end
 )
 
-Settings.setHeater = setHeater
-Settings.setFan = setFan
+Settings.setHeater = storm.n.set_heater
+Settings.setFan = storm.n.set_fan
 Settings.updateSMAP = updateSMAP
 
 return Settings

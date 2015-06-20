@@ -14,6 +14,59 @@ uint8_t fanSettings[2] = {0, 0};
 // heaters array: this is taken care of since NUM_HEATERS = 2
 // fans array: this is taken care of since NUM_FANS = 2
 
+/* These two functions correspond to the following Lua code.
+
+-- SETTING is from 0 to 100
+function setHeater(heater, setting)
+   heaterSettings[heater] = setting
+end
+
+-- SETTING is from 0 to 100
+function setFan(fan, setting)
+   fanSettings[fan] = setting
+   if storm.n.check_occupancy() then
+         storm.n.set_fan_state(fan, storm.n.quantize_fan(setting))
+   end
+end
+
+*/
+
+int set_heater(lua_State* L) {
+    int heater = luaL_checkint(L, 1);
+    uint8_t setting = (uint8_t) luaL_checkint(L, 2);
+    heaterSettings[heater] = setting;
+    return 0;
+}
+
+int set_fan(lua_State* L) {
+    int fan = luaL_checkint(L, 1);
+    uint8_t setting = (uint8_t) luaL_checkint(L, 2);
+    fanSettings[fan] = setting;
+    lua_pushlightfunction(L, check_occupancy);
+    lua_call(L, 0, 1);
+    if (lua_toboolean(L, -1)) {
+        lua_pushlightfunction(L, set_fan_state);
+        lua_pushvalue(L, 1);
+        lua_pushlightfunction(L, quantize_fan);
+        lua_pushvalue(L, 2);
+        lua_call(L, 1, 1);
+        lua_call(L, 2, 0);
+    }
+    return 0;
+}
+
+int get_heater(lua_State* L) {
+    int heater = luaL_checkint(L, 1);
+    lua_pushnumber(L, heaterSettings[heater]);
+    return 1;
+}
+
+int get_fan(lua_State* L) {
+    int fan = luaL_checkint(L, 1);
+    lua_pushnumber(L, fanSettings[fan]);
+    return 1;
+}
+
 /* update_server, send_payload, and send_handler corresponds to the following Lua code
 
 sendHandler = function (message) if message ~= nil then print("Success!") else print("15.4 Failed") end end
@@ -99,7 +152,7 @@ int update_server(lua_State* L) {
         lua_pushnumber(L, i);
         lua_gettable(L, pyld_index);
     }
-    int occ = lua_tonumber(L, occ_index); // to convert from boolean to integer
+    int occ = lua_toboolean(L, occ_index); // to convert from boolean to integer
     lua_pushnumber(L, occ);
     lua_pushvalue(L, temp_index);
     lua_pushvalue(L, humidity_index);
@@ -158,3 +211,73 @@ int send_handler(lua_State* L) {
     }
     return 0;
 }
+
+/* Utilities for time synchronization */
+
+int32_t timediff = 0;
+
+int to_hex_str(lua_State* L) {
+    uint16_t num = luaL_checkint(L, 1);
+    char str[5];
+    sprintf(str, "%x", num);
+    lua_pushlstring(L, str, 4);
+    return 1;
+}
+
+int get_time(lua_State* L) {
+    if (timediff) {
+        lua_pushlightfunction(L, get_time_always);
+        lua_call(L, 0, 1);
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
+}
+
+int get_time_always(lua_State* L) {
+    lua_pushlightfunction(L, get_kernel_secs);
+    lua_call(L, 0, 1);
+    int32_t time = (int32_t) lua_tointeger(L, -1) + timediff;
+    lua_pop(L, 1);
+    lua_pushnumber(L, time);
+    return 1;
+}
+
+int get_time_diff(lua_State* L) {
+    if (timediff) {
+        lua_pushnumber(L, timediff);
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
+}
+
+int set_time_diff(lua_State* L) {
+    int32_t timediffdiff = (int32_t) luaL_checkint(L, 1);
+    lua_pushlightfunction(L, get_kernel_secs);
+    lua_call(L, 0, 1);
+    int32_t time = (int32_t) lua_tointeger(L, -1) + timediff + timediffdiff;
+    if (time < 1400000000 || time > 1600000000) {
+        printf("Time synchronization fails sanity check: %d\n", (int) time);
+        lua_pushboolean(L, 0);
+        return 1; // a sanity check, to make sure the time is not something crazy
+    }
+    if (timediff) {
+        timediff = (int32_t) (timediff + ALPHA * timediffdiff);
+    } else {
+        timediff = timediffdiff;
+    }
+    lua_pushboolean(L, 1);
+    return 1;
+}
+
+int compute_time_diff(lua_State* L) {
+    int64_t t0 = (int64_t) luaL_checkint(L, 1);
+    int64_t t1 = (int64_t) luaL_checkint(L, 2);
+    int64_t t2 = (int64_t) luaL_checkint(L, 3);
+    int64_t t3 = (int64_t) luaL_checkint(L, 4);
+    int64_t diff = ((t1 - t0) + (t2 - t3)) >> 1;
+    lua_pushnumber(L, (int32_t) diff);
+    return 1;
+}
+

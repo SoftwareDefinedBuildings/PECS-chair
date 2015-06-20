@@ -1,9 +1,5 @@
 #include "receiver.h"
 
-int32_t timediff = 0;
-
-int register_time_synchronization(lua_State* L); // defined in autosender.c
-
 int register_ack(lua_State* L);
 
 int bytes_to_u32(lua_State* L) {
@@ -48,12 +44,9 @@ int bytes_to_u32(lua_State* L) {
       end */
 
 int actuation_handler(lua_State* L) {
-    int i, value_index, cmd, ret_index, set_index;
+    int i, value_index, cmd, ret_index;
     lua_newtable(L); // retTable
     ret_index = lua_gettop(L);
-
-    lua_getglobal(L, "ChairSettings");
-    set_index = lua_gettop(L);
 
     // Unpack meta-setting "heaters"
     lua_pushstring(L, "heaters");
@@ -111,7 +104,7 @@ int actuation_handler(lua_State* L) {
         lua_pushvalue(L, value_index);
         lua_gettable(L, 1);
         if (lua_isnil(L, -1)) {
-            lua_settop(L, set_index);
+            lua_settop(L, ret_index);
             continue;
         }
         cmd = lua_tointeger(L, -1);
@@ -120,14 +113,13 @@ int actuation_handler(lua_State* L) {
             switch (i) {
             case 0:
             case 1:
-                lua_pushstring(L, "setHeater");
+                lua_pushlightfunction(L, set_heater);
                 break;
             case 2:
             case 3:
-                lua_pushstring(L, "setFan");
+                lua_pushlightfunction(L, set_fan);
                 break;
             }
-            lua_gettable(L, set_index);
             switch (i) {
             case 0:
                 lua_pushnumber(L, BACK_HEATER);
@@ -158,15 +150,11 @@ int actuation_handler(lua_State* L) {
 // takes five bytes as arguments
 int bl_handler(lua_State* L) {
     int number = luaL_checkint(L, 5);
-    lua_getglobal(L, "ChairSettings");
-    int settings_index = lua_gettop(L);
     switch (number) {
     case 1:
-        lua_pushstring(L, "setHeater");
-        lua_gettable(L, settings_index);
+        lua_pushlightfunction(L, set_heater);
         int heater_index = lua_gettop(L);
-        lua_pushstring(L, "setFan");
-        lua_gettable(L, settings_index);
+        lua_pushlightfunction(L, set_fan);
         int fan_index = lua_gettop(L);
 
         lua_pushvalue(L, heater_index);
@@ -222,67 +210,3 @@ int bl_handler(lua_State* L) {
     return 0;
 }
 
-int to_hex_str(lua_State* L) {
-    uint16_t num = luaL_checkint(L, 1);
-    char str[5];
-    sprintf(str, "%x", num);
-    lua_pushlstring(L, str, 4);
-    return 1;
-}
-
-int get_time(lua_State* L) {
-    if (timediff) {
-        lua_pushlightfunction(L, get_time_always);
-        lua_call(L, 0, 1);
-    } else {
-        lua_pushnil(L);
-    }
-    return 1;
-}
-
-int get_time_always(lua_State* L) {
-    lua_pushlightfunction(L, get_kernel_secs);
-    lua_call(L, 0, 1);
-    int32_t time = (int32_t) lua_tointeger(L, -1) + timediff;
-    lua_pop(L, 1);
-    lua_pushnumber(L, time);
-    return 1;
-}
-
-int get_time_diff(lua_State* L) {
-    if (timediff) {
-        lua_pushnumber(L, timediff);
-    } else {
-        lua_pushnil(L);
-    }
-    return 1;
-}
-
-int set_time_diff(lua_State* L) {
-    int32_t timediffdiff = (int32_t) luaL_checkint(L, 1);
-    lua_pushlightfunction(L, get_kernel_secs);
-    lua_call(L, 0, 1);
-    int32_t time = (int32_t) lua_tointeger(L, -1) + timediff + timediffdiff;
-    if (time < 1400000000 || time > 1600000000) {
-        printf("Time synchronization fails sanity check: %d\n", (int) time);
-        lua_pushboolean(L, 0);
-        return 1; // a sanity check, to make sure the time is not something crazy
-    }
-    if (timediff) {
-        timediff = (int32_t) (timediff + ALPHA * timediffdiff);
-    } else {
-        timediff = timediffdiff;
-    }
-    lua_pushboolean(L, 1);
-    return 1;
-}
-
-int compute_time_diff(lua_State* L) {
-    int64_t t0 = (int64_t) luaL_checkint(L, 1);
-    int64_t t1 = (int64_t) luaL_checkint(L, 2);
-    int64_t t2 = (int64_t) luaL_checkint(L, 3);
-    int64_t t3 = (int64_t) luaL_checkint(L, 4);
-    int64_t diff = ((t1 - t0) + (t2 - t3)) >> 1;
-    lua_pushnumber(L, (int32_t) diff);
-    return 1;
-}
