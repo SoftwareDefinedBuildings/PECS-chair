@@ -46,6 +46,7 @@ timesynchronizer = rnq.RNQServer(38002, lambda msg, addr: {"time": time.time()})
 
 class ActuationHandler(BaseHTTPRequestHandler):
     def do_GET(self):
+        print "Got GET request"
         try:
             path, tmp = self.path.split('?', 1)
             qs = urlparse.parse_qs(tmp)
@@ -67,47 +68,54 @@ class ActuationHandler(BaseHTTPRequestHandler):
             return
 
     def do_POST(self):
+        print "Got POST request"
         print self.headers
         doc_recvd = self.rfile.read(int(self.headers['Content-Length']))
-        print doc_recvd
-        try:
-            doc = json.loads(doc_recvd)
-            macaddr = doc.pop('macaddr')
-            ips = ipmap[macaddr]
-        except:
-            print "Invalid JSON or Mac Address"
-            self.send_response(400)
-            return
-        print ips
-        res = requests.post("http://localhost:{0}/".format(ips[2]), json.dumps(doc))
-        if res.status_code != 200:
-            self.send_response(404)
-            self.end_headers()
-            self.wfile.write("Could not update sMAP")
-            return
-        print "Successfully updated sMAP"
-        if res.text in ('success', 'failure'):
-            timestamp = res.text
+        timestamp = None # So that I assign it before referencing it
+        if doc_recvd == "{}":
+            # Special notiation: get time on device
+            print "Got time sync request"
+            timestamp = time.time()
         else:
-            removeList = []
-            timestamp = int(res.text)
-            if 'myIP' in doc:
-                ips[1] = doc['myIP']
-            if 'fromFS' not in doc or not doc['fromFS']:
-                for key in doc:
-                    if key not in ["backh", "bottomh", "backf", "bottomf", "heaters", "fans"]:
-                        removeList.append(key)
-                for key in removeList:
-                    del doc[key]
-                if len(doc) != 0:
-                    doc["toIP"] = ips[0]
-                    if "header" in doc:
-                        del doc["header"]
-                    print "Actuating chair"
-                    print "IP", ips[1]
-                    rnqc = get_rnqc(macaddr)
-                    rnqc.back = rnqc.front # pop pending actuations from queue
-                    rnqc.sendMessage(doc, (ips[1], FS_PORT), 100, 0.1, lambda: myprint("trying"), lambda msg, addr: myprint(msg))
+            print doc_recvd
+            try:
+                doc = json.loads(doc_recvd)
+                macaddr = doc.pop('macaddr')
+                ips = ipmap[macaddr]
+            except:
+                print "Invalid JSON or Mac Address"
+                self.send_response(400)
+                return
+            print ips
+            res = requests.post("http://localhost:{0}/".format(ips[2]), json.dumps(doc))
+            if res.status_code != 200:
+                self.send_response(404)
+                self.end_headers()
+                self.wfile.write("Could not update sMAP")
+                return
+            print "Successfully updated sMAP"
+            if res.text in ('success', 'failure'):
+                timestamp = res.text
+            else:
+                removeList = []
+                timestamp = float(res.text)
+                if 'myIP' in doc:
+                    ips[1] = doc['myIP']
+                if 'fromFS' not in doc or not doc['fromFS']:
+                    for key in doc:
+                        if key not in ["backh", "bottomh", "backf", "bottomf", "heaters", "fans"]:
+                            removeList.append(key)
+                    for key in removeList:
+                        del doc[key]
+                    if len(doc) != 0:
+                        doc["toIP"] = ips[0]
+                        if "header" in doc:
+                            del doc["header"]
+                        print "Actuating chair"
+                        print "IP", ips[1]
+                        rnqc = get_rnqc(macaddr)
+                        rnqc.back = rnqc.front # pop pending actuations from queue
+                        rnqc.sendMessage(doc, (ips[1], FS_PORT), 100, 0.1, lambda: myprint("trying"), lambda msg, addr: myprint(msg))
         self.send_response(200)
         self.send_header('Content-type', 'text/json')
         self.end_headers()

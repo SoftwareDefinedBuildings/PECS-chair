@@ -35,7 +35,7 @@ bottomf_hist = None
 occ_hist = None
 temp_hist = None
 hum_hist = None
-driver = None
+sdriver = None
 
 port = None
 
@@ -43,7 +43,7 @@ class ChairResource(Resource):
     isLeaf = True
     def __init__(self, *args):
         Resource.__init__(self, *args)
-        self.lastAct = int(time.time())
+        self.lastAct = time.time()
         self.lasttruevaltime = 0
         self.lasthistvaltime = 1
     def render_GET(self, request):
@@ -59,22 +59,25 @@ class ChairResource(Resource):
         print "Got JSON at port", port
         doc = json.loads(doc_recvd)
         if "timestamp" in doc:
-            ptTime = doc["timestamp"]
-            if ptTime > self.lasthistvaltime:
-                self.lasthistvaltime = ptTime
-            else:
-                return 'success' # probably a duplicate
-            if driver is None:
+            if sdriver is None:
                 # Make sure an ACK doesn't get sent back!
                 return 'failure'
+            print "HANDLING HISTORICAL POINT"
+            ptTime = doc["timestamp"]
+            print "ptTime:", ptTime
+            print "boundary:", self.lasthistvaltime
+            if ptTime <= self.lasthistvaltime:
+                return 'success'
             else:
-                driver.add("/backheater_hist", ptTime, doc["backh"])
-                driver.add("/bottomheater_hist", ptTime, doc["bottomh"])
-                driver.add("/backfan_hist", ptTime, doc["backf"])
-                driver.add("/bottomfan_hist", ptTime, doc["bottomf"])
-                driver.add("/occupancy_hist", ptTime, doc["occupancy"])
-                driver.add("/backheater_hist", ptTime, doc["temperature"])
-                driver.add("/humidity_hist", ptTime, doc["humidity"])
+                print "ADDING HISTORICAL POINT TO SMAP"
+                sdriver.add("/backheater_hist", ptTime, doc["backh"])
+                sdriver.add("/bottomheater_hist", ptTime, doc["bottomh"])
+                sdriver.add("/backfan_hist", ptTime, doc["backf"])
+                sdriver.add("/bottomfan_hist", ptTime, doc["bottomf"])
+                sdriver.add("/occupancy_hist", ptTime, doc["occupancy"])
+                sdriver.add("/temperature_hist", ptTime, doc["temperature"] / 100.0)
+                sdriver.add("/humidity_hist", ptTime, doc["humidity"] / 100.0)
+                self.lasthistvaltime = ptTime
                 return 'success'
         else:
             for key in doc:
@@ -86,7 +89,7 @@ class ChairResource(Resource):
                 elif key == "fans":
                     readings["bottomFan"] = doc[key]
                     readings["backFan"] = doc[key]
-            self.lastAct = int(time.time())
+            self.lastAct = time.time()
             if "fromFS" in doc and doc["fromFS"]:
                 print "lasttruevaltime", port
                 self.lasttruevaltime = self.lastAct
@@ -101,9 +104,9 @@ class PECSChairDriver(driver.SmapDriver):
         global occ_hist
         global temp_hist
         global hum_hist
-        global driver
+        global sdriver
         
-        driver = self
+        sdriver = self
     
         self.state = readings.copy()
         self.macaddr = opts.get("macaddr")

@@ -14,6 +14,7 @@ def ack_printer(*args):
         print "Could not send ACK"
 
 def handlemsg(received, addr):
+    print "Raw:", received
     newmsg = {}
     newmsg['macaddr'] = hex(received[1])[-4:]
     newmsg['occupancy'] = received[2]
@@ -26,15 +27,16 @@ def handlemsg(received, addr):
     newmsg['fromFS'] = True
     newmsg['myIP'] = addr[0]
     ack_id = None
-    if len(received) > 8:
-        newmsg['timestamp'] = addr[9]
-        ack_id = addr[10]
+    if len(received) > 9:
+        newmsg['timestamp'] = received[9]
+        ack_id = received[10]
     jsonData = json.dumps(newmsg)
     print "Received:", jsonData
     r = requests.post("http://localhost:38001", data=jsonData)
     print r.text
     if ack_id is not None and r.text == 'success':
-        ack_sender.sendMessage({"ack": ack_id}, addr, 100, 0.1, None, lambda *args: if args[0] is not None)
+        print "Sending ACK:", ack_id
+        ack_sender.sendMessage({"ack": ack_id, "toIP": "ff02:{0}".format(received[1])}, (addr[0], 20000), 100, 0.1, None, ack_printer)
     return {"rv": "ok"}
 
 listener = rnq.RNQServer(38003, handlemsg)
