@@ -27,7 +27,7 @@ end)]]
 
 storm.n.enable_reset()
 
-server = storm.n.RNQServer:new(60004, storm.n.actuation_handler)
+server = storm.n.RNQServer:new(60001, storm.n.actuation_handler)
 
 -- Synchronize time with firestorm
 function time_sync_handler(msg)

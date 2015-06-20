@@ -24,7 +24,7 @@ parser = ConfigParser.RawConfigParser()
 parser.read('chair.ini')
 for sect in parser.sections():
     if parser.has_option(sect, 'macaddr') and parser.has_option(sect, 'rel_ip') and parser.has_option(sect, 'dest_ip') and parser.has_option(sect, 'port'):
-        ipmap[parser.get(sect, 'macaddr')] = [parser.get(sect, 'rel_ip'), parser.get(sect, 'dest_ip'), int(parser.get(sect, 'port'))]
+        ipmap[parser.get(sect, 'macaddr')] = [parser.get(sect, 'dest_ip'), int(parser.get(sect, 'port'))]
 
 FS_PORT = 60001
 
@@ -57,7 +57,7 @@ class ActuationHandler(BaseHTTPRequestHandler):
             self.send_response(400)
             return
         if 'macaddr' in qs:
-            res = requests.get("http://localhost:{0}/".format(ips[2]))
+            res = requests.get("http://localhost:{0}/".format(ips[1]))
             self.send_response(200)
             self.send_header('Content-type', 'text/html')
             self.end_headers()
@@ -87,7 +87,7 @@ class ActuationHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 return
             print ips
-            res = requests.post("http://localhost:{0}/".format(ips[2]), json.dumps(doc))
+            res = requests.post("http://localhost:{0}/".format(ips[1]), json.dumps(doc))
             if res.status_code != 200:
                 self.send_response(404)
                 self.end_headers()
@@ -100,7 +100,7 @@ class ActuationHandler(BaseHTTPRequestHandler):
                 removeList = []
                 timestamp = float(res.text)
                 if 'myIP' in doc:
-                    ips[1] = doc['myIP']
+                    ips[0] = doc['myIP']
                 if 'fromFS' not in doc or not doc['fromFS']:
                     for key in doc:
                         if key not in ["backh", "bottomh", "backf", "bottomf", "heaters", "fans"]:
@@ -108,14 +108,13 @@ class ActuationHandler(BaseHTTPRequestHandler):
                     for key in removeList:
                         del doc[key]
                     if len(doc) != 0:
-                        doc["toIP"] = ips[0]
                         if "header" in doc:
                             del doc["header"]
                         print "Actuating chair"
-                        print "IP", ips[1]
+                        print "IP", ips[0]
                         rnqc = get_rnqc(macaddr)
                         rnqc.back = rnqc.front # pop pending actuations from queue
-                        rnqc.sendMessage(doc, (ips[1], FS_PORT), 100, 0.1, lambda: myprint("trying"), lambda msg, addr: myprint(msg))
+                        rnqc.sendMessage(doc, (ips[0], FS_PORT), 100, 0.1, lambda: myprint("trying"), lambda msg, addr: myprint(msg))
         self.send_response(200)
         self.send_header('Content-type', 'text/json')
         self.end_headers()

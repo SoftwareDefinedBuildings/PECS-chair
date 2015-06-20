@@ -23,7 +23,7 @@ ok = {["rv"] = "ok"}
    print("Actuating " .. toIP)
    rnqcl:sendMessage(payload,
                      toIP,
-                     60004,
+                     60001,
                      90,
                      200 * storm.os.MILLISECOND,
                      function ()
