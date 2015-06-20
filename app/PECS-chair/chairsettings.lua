@@ -11,10 +11,11 @@ storm.n.set_heater_state(storm.n.BACK_HEATER, storm.n.OFF)
 storm.n.set_fan_state(storm.n.BOTTOM_FAN, storm.n.OFF)
 storm.n.set_fan_state(storm.n.BACK_FAN, storm.n.OFF)
 
+__rnqcl = storm.n.RNQClient:new(30000)
+
 heaterSettings = {[storm.n.BOTTOM_HEATER] = 0, [storm.n.BACK_HEATER] = 0}
 fanSettings = {[storm.n.BOTTOM_FAN] = 0, [storm.n.BACK_FAN] = 0}
 fans = {storm.n.BOTTOM_FAN, storm.n.BACK_FAN}
-
 heaters = {storm.n.BOTTOM_HEATER, storm.n.BACK_HEATER}
 
 data_ip = "ff02::1" -- Where to send the data. ff02::1 to use firestorm proxy
@@ -63,9 +64,7 @@ for _, heater in pairs(heaters) do
     modulateHeater(heater)
 end
 
-local sendHandler = function (message) if message ~= nil then print("Success!") else print("15.4 Failed") end end
-
-rnqcl = storm.n.RNQClient:new(30000)
+--[[sendHandler = function (message) if message ~= nil then print("Success!") else print("15.4 Failed") end end
 function updateSMAP()
    -- Update sMAP
    local temp
@@ -88,7 +87,7 @@ function updateSMAP()
            rnqcl:sendMessage(pyld, data_ip, 38003, 150, 100 * storm.os.MILLISECOND, nil, sendHandler)
        end)
    print("Updated")
-end
+end]]
 
 --[[function logDataPoint()
     local temp
@@ -113,7 +112,7 @@ end
                                function () print("Logged") end)
 end]]
 
-storm.os.invokePeriodically(20 * storm.os.SECOND, updateSMAP) -- For synchronization
+storm.os.invokePeriodically(20 * storm.os.SECOND, storm.n.update_server) -- For synchronization
 
 local last_occupancy_state = false
 storm.os.invokePeriodically(

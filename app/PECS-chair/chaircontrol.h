@@ -22,9 +22,11 @@
 
 #define BOTTOM_HEATER 0 // storm.n.BOTTOM_HEATER
 #define BACK_HEATER 1 // storm.n.BACK_HEATER
+#define NUM_HEATERS 2
 
 #define BOTTOM_FAN 0 // storm.n.BOTTOM_FAN
 #define BACK_FAN 1 // storm.n.BACK_FAN
+#define NUM_FANS 2
 
 #define DISABLE 0
 #define ENABLE 1

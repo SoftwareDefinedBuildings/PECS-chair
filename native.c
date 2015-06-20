@@ -35,6 +35,7 @@
 #include "natlib/chair/flash.c"
 #include "natlib/chair/receiver.c"
 #include "natlib/chair/autosender.c"
+#include "natlib/chair/chairsettings.c"
 
 #include "natlib/neopixel.c"
 
@@ -200,6 +201,7 @@ const LUA_REG_TYPE contrib_native_map[] =
     ADCIFE_SYMBOLS
     RNQ_SYMBOLS
     NEOPIXEL_SYMBOLS
+    CHAIRSETTINGS_SYMBOLS
 
     /* Constants for the Temp sensor. */
     // -- Register address --
