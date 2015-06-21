@@ -19,6 +19,13 @@ readings = {
     "humidity": 0.0
 }
 
+settings = {
+    "backh": 0,
+    "bottomh": 0,
+    "backf": 0,
+    "bottomf": 0
+}
+
 translator = {
     "OFF": 0,
     "ON": 100,
@@ -48,10 +55,10 @@ class ChairResource(Resource):
         self.lasthistvaltime = 1
     def render_GET(self, request):
         doc = {"time": self.lastAct,
-            "bottomh": readings["bottomh"],
-            "backh": readings["backh"],
-            "bottomf": readings["bottomf"],
-            "backf": readings["backf"]}
+            "bottomh": settings["bottomh"],
+            "backh": settings["backh"],
+            "bottomf": settings["bottomf"],
+            "backf": settings["backf"]}
         return json.dumps(doc)
     def render_POST(self, request):
         doc_recvd = request.content.read()
@@ -80,15 +87,12 @@ class ChairResource(Resource):
                 self.lasthistvaltime = ptTime
                 return 'success'
         else:
+            isReading = "fromFS" in doc and doc["fromFS"]
             for key in doc:
-                if key in readings:
+                if key in settings:
+                    settings[key] = doc[key]
+                if isReading and key in readings:
                     readings[key] = doc[key]
-                elif key == "heaters":
-                    readings["bottomHeater"] = doc[key]
-                    readings["backHeater"] = doc[key]
-                elif key == "fans":
-                    readings["bottomFan"] = doc[key]
-                    readings["backFan"] = doc[key]
             self.lastAct = time.time()
             if "fromFS" in doc and doc["fromFS"]:
                 print "lasttruevaltime", port
