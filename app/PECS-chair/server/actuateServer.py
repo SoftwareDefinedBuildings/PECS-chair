@@ -23,7 +23,7 @@ ipmap = {}
 parser = ConfigParser.RawConfigParser()
 parser.read('chair.ini')
 for sect in parser.sections():
-    if parser.has_option(sect, 'macaddr') and parser.has_option(sect, 'rel_ip') and parser.has_option(sect, 'dest_ip') and parser.has_option(sect, 'port'):
+    if parser.has_option(sect, 'macaddr') and parser.has_option(sect, 'dest_ip') and parser.has_option(sect, 'port'):
         ipmap[parser.get(sect, 'macaddr')] = [parser.get(sect, 'dest_ip'), int(parser.get(sect, 'port'))]
 
 FS_PORT = 60001
@@ -35,7 +35,7 @@ def get_rnqc(macaddr):
     if macaddr in rnq_assign:
         return rnq_assign[macaddr]
     else:
-        rnqc = rnq.RNQClient(ipmap[macaddr][2] - 1000)
+        rnqc = rnq.RNQClient(ipmap[macaddr][1] - 1000)
         rnq_assign[macaddr] = rnqc
         return rnqc
 
@@ -61,6 +61,7 @@ class ActuationHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-type', 'text/html')
             self.end_headers()
+            print res.text
             self.wfile.write(res.text)
         else:
             print "sending 400: missing"
