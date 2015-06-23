@@ -65,7 +65,7 @@ storm.n.bl_PECS_clear_recv_buf()
 function handle_bl_msg(bytes)
     b1, b2, b3, b4, b5 = storm.n.interpret_string(bytes)
     print("using bl handler")
-    storm.n.bl_handler(b1, b2, b3, b4, b5)
+    storm.n.bl_handler(b1, b2, b3, b4, b5, bytes)
     print("Got", b1, b2, b3, b4, b5)
     storm.n.bl_PECS_receive_cb(5, handle_bl_msg)
 end

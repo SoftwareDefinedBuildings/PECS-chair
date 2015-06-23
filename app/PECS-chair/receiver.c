@@ -149,7 +149,7 @@ int actuation_handler(lua_State* L) {
 
 // takes five bytes as arguments
 int bl_handler(lua_State* L) {
-    int number = luaL_checkint(L, 5);
+    int number = luaL_checkint(L, 5);  // the opcode
     switch (number) {
     case 1:
         lua_pushlightfunction(L, set_heater);
@@ -185,6 +185,11 @@ int bl_handler(lua_State* L) {
         lua_pushvalue(L, 3);
         lua_pushvalue(L, 4);
         lua_call(L, 4, 1);
+        lua_call(L, 1, 0);
+        break;
+    case 3:
+        lua_pushlightfunction(L, bl_PECS_send); // echo the message
+        lua_pushvalue(L, 6);
         lua_call(L, 1, 0);
         break;
     default:
