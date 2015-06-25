@@ -115,7 +115,7 @@ class ActuationHandler(BaseHTTPRequestHandler):
                         print "IP", ips[0]
                         rnqc = get_rnqc(macaddr)
                         rnqc.back = rnqc.front # pop pending actuations from queue
-                        rnqc.sendMessage(doc, (ips[0], FS_PORT), 100, 0.1, lambda: myprint("trying"), lambda msg, addr: myprint(msg))
+                        rnqc.sendMessage(doc, (ips[0], FS_PORT), 11, 1, lambda: myprint("trying"), lambda msg, addr: myprint(msg))
         self.send_response(200)
         self.send_header('Content-type', 'text/json')
         self.end_headers()
