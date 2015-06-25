@@ -21,7 +21,7 @@ blname = raw_input("Enter chair name: ")
 url = "http://{0}:{1}?chairid={2}&name={3}&wifimac={4}"
 
 print "Generating QR Code..."
-qrcode = pyqrcode.create(url.format(SERVER, PORT, serial_number, blmacaddr, blname))
+qrcode = pyqrcode.create(url.format(SERVER, PORT, blmacaddr, blname, serial_number))
 if verbose:
     print qrcode.terminal()
 
