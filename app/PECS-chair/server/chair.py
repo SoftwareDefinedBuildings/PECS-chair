@@ -65,7 +65,7 @@ class ChairResource(Resource):
                 sdriver.add("/bottomheater_hist", ptTime, doc["bottomh"])
                 sdriver.add("/backfan_hist", ptTime, doc["backf"])
                 sdriver.add("/bottomfan_hist", ptTime, doc["bottomf"])
-                sdriver.add("/occupancy_hist", ptTime, doc["occupancy"])
+                sdriver.add("/occupancy_hist", ptTime, 1 if doc["occupancy"] else 0)
                 sdriver.add("/temperature_hist", ptTime, doc["temperature"] / 100.0)
                 sdriver.add("/humidity_hist", ptTime, doc["humidity"] / 100.0)
                 self.lasthistvaltime = ptTime
