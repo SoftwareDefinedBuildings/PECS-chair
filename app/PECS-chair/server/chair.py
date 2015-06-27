@@ -51,6 +51,7 @@ class ChairResource(Resource):
         doc = json.loads(doc_recvd)
         if "timestamp" in doc:
             if self.driver is None:
+                print 'driver is none?!'
                 # Make sure an ACK doesn't get sent back!
                 return 'failure'
             print "HANDLING HISTORICAL POINT"
@@ -58,6 +59,7 @@ class ChairResource(Resource):
             print "ptTime:", ptTime
             print "boundary:", self.lasthistvaltime
             if ptTime <= self.lasthistvaltime:
+                print 'pttime',ptTime,'before bound',self.lasthistvaltime
                 return 'success'
             else:
                 print "ADDING HISTORICAL POINT TO SMAP"
@@ -81,6 +83,7 @@ class ChairResource(Resource):
             if "fromFS" in doc and doc["fromFS"]:
                 print "lasttruevaltime", self.driver.port
                 self.lasttruevaltime = self.lastAct
+        print 'returning something else'
         return str(self.lastAct)
 
 class PECSChairDriver(driver.SmapDriver):

@@ -108,6 +108,13 @@ class RNQClient(object):
             sendThread.daemon = True
             sendThread.start()
 
+    def cancelMessage(self):
+        self.pending = False
+
+    def empty(self):
+        self.front = 1
+        self.back = 1
+
 class RNQServer(object):
     def __init__(self, port, responseGenerator=None):
         self.currIDs = {}

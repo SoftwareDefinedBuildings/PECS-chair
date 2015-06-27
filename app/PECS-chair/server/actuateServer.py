@@ -114,7 +114,8 @@ class ActuationHandler(BaseHTTPRequestHandler):
                         print "Actuating chair"
                         print "IP", ips[0]
                         rnqc = get_rnqc(macaddr)
-                        rnqc.back = rnqc.front # pop pending actuations from queue
+                        rnqc.cancelMessage() # stop trying to send the current actuation message
+                        rnqc.empty() # pop pending actuations from queue
                         rnqc.sendMessage(doc, (ips[0], FS_PORT), 11, 1, lambda: myprint("trying"), lambda msg, addr: myprint(msg))
         self.send_response(200)
         self.send_header('Content-type', 'text/json')
