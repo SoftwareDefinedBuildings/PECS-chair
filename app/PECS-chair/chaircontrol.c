@@ -211,11 +211,39 @@ int set_temp_mode(lua_State* L) {
     return 0;
 }
 
-/* storm.n.get_temp_humidity(unit)
+int lua_get_temp_humidity_2(lua_State* L);
+int lua_get_temp_humidity_tail(lua_State* L);
+
+/* storm.n.get_temp_humidity(unit, cb)
    unit is in {storm.n.FAHRENHEIT, storm.n.CELSIUS} */
 int lua_get_temp_humidity(lua_State* L) {
-    int unit = luaL_checkint(L, 1);
-    uint32_t reading = temp_get_reading_tempsensor(TEMPERATURE_COMMAND, 3);
+    temp_send_cmd_tempsensor(TEMPERATURE_COMMAND);
+    lua_pushlightfunction(L, poll_temp_until_ready);
+    lua_pushnumber(L, 3); // the response should have 3 bytes
+    lua_pushnumber(L, 10);
+    lua_pushvalue(L, 1);
+    lua_pushvalue(L, 2);
+    lua_pushcclosure(L, lua_get_temp_humidity_2, 2);
+    lua_call(L, 3, 0);
+    return 0;
+}
+
+int lua_get_temp_humidity_2(lua_State* L) {
+    temp_send_cmd_tempsensor(HUMIDITY_COMMAND);
+    lua_pushlightfunction(L, poll_temp_until_ready);
+    lua_pushnumber(L, 3); // the response should have 3 bytes
+    lua_pushnumber(L, 10);
+    lua_pushvalue(L, lua_upvalueindex(1));
+    lua_pushvalue(L, lua_upvalueindex(2));
+    lua_pushvalue(L, 1);
+    lua_pushcclosure(L, lua_get_temp_humidity_tail, 3);
+    lua_call(L, 3, 0);
+    return 0;
+}
+    
+int lua_get_temp_humidity_tail(lua_State* L) {
+    int unit = lua_tointeger(L, lua_upvalueindex(1));
+    uint32_t reading = (uint32_t) lua_tointeger(L, lua_upvalueindex(3));
     double rawtemp = (double) (reading >> 8); // remove the 8-bit checksum
     double temperature = NAN;
     double ctemp;
@@ -234,15 +262,17 @@ int lua_get_temp_humidity(lua_State* L) {
         ctemp = NAN;
         break;
     }
-    reading = temp_get_reading_tempsensor(HUMIDITY_COMMAND, 3);
+    reading = lua_tointeger(L, 1);
     double rawhumidity = (double) (reading >> 8); // remove the 8-bit checksum
     double linhumidity = -2.0468 + 0.0367 * rawhumidity - (1.5955e-6) * rawhumidity * rawhumidity;
     double humidity = (ctemp - 25) * (0.01 + 0.00008 * rawhumidity) + linhumidity;
     int fixedPtTemperature = (int) (temperature * 100);
     int fixedPtHumidity = (int) (humidity * 100); // * 100 fixed point
+    lua_pushvalue(L, lua_upvalueindex(2));
     lua_pushnumber(L, fixedPtTemperature);
     lua_pushnumber(L, fixedPtHumidity);
-    return 2;
+    lua_call(L, 2, 0);
+    return 0;
 }
 
 int reset_counter(lua_State* L) {

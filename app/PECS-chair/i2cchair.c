@@ -1,9 +1,5 @@
 #include "i2cchair.h"
 
-#define I2C_DELAY() delay(10000)
-#define TEMP_DELAY() delay(10)
-#define TEMP_TIMEOUT 100000
-
 int delay(int numsteps) {
     volatile int v = 0;
     int i;
@@ -274,28 +270,54 @@ uint32_t temp_read_bytes(int numbytes, int (*read_SCL)(), int (*read_SDA)(), voi
     return result;
 }
 
-/* CMD must be a command where NUMBYTES bytes are expected in response. So, not
+/* CMD must be a command where up to 4 bytes are expected in response. So, not
    all commands are supported by this function. However, it is sufficient to
-   obtain temperature and humidity measurements. NUMBYTES can be at most four.
-   If not, only the last four bytes are returned. */
-uint32_t temp_get_reading(uint8_t cmd, int numbytes, int (*read_SCL)(), int (*read_SDA)(), void (*clear_SCL)(), void (*clear_SDA)(), void (*raise_SCL)(), void (*raise_SDA)()) {
-    int i;
+   obtain temperature and humidity measurements. Use poll_temp_until_ready, where
+   NUMBYTES can be at most four.
+    
+   Only sends the command; does not obtain measurement. Use poll_temp_until_ready
+   to obtain the measurement. */
+void temp_send_cmd(uint8_t cmd, int (*read_SCL)(), int (*read_SDA)(), void (*clear_SCL)(), void (*clear_SDA)(), void (*raise_SCL)(), void (*raise_SDA)()) {
+    //int i;
     TEMP_DELAY();
     temp_start_cond(read_SCL, read_SDA, clear_SCL, clear_SDA, raise_SCL, raise_SDA);
     temp_write_byte(cmd, read_SCL, read_SDA, clear_SCL, clear_SDA, raise_SCL, raise_SDA);
-    for (i = 0; read_SDA() && i < TEMP_TIMEOUT; i++) {
-        TEMP_DELAY();
-    }
-    if (i == TEMP_TIMEOUT) {
-        printf("WARNING: Could not get reading from temperature/humidity sensor (timed out)\n");
-        return 0xFFFFFFFF;
-    }
-    TEMP_DELAY(); // just to make sure we wait long enough
-    return temp_read_bytes(3, read_SCL, read_SDA, clear_SCL, clear_SDA, raise_SCL, raise_SDA);
 }
 
-uint32_t temp_get_reading_tempsensor(uint8_t cmd, int numbytes) {
-    return temp_get_reading(cmd, numbytes, read_SCL_temp, read_SDA_temp, clear_SCL_temp, clear_SDA_temp, raise_SCL_temp, raise_SDA_temp);
+
+/* poll_temp_until_ready(numbytes, numtries, callback)
+   Repeatedly polls the sensor until the max tries is exceeded, or measurement
+   (of specified number of bytes) can be obtained. NUMBYTES cannot exceed 4.
+*/
+int poll_temp_until_ready(lua_State* L) {
+    int numbytes = luaL_checkint(L, 1);
+    int numtries = luaL_checkint(L, 2);
+    if (numtries == 0) {
+        printf("WARNING: Could not get reading from temperature/humidity sensor (timed out)\n");
+        lua_pushvalue(L, 3);
+        lua_pushnumber(L, 0xFFFFFFFF);
+        lua_call(L, 1, 0);
+    }
+    if (read_SDA_temp()) {
+        lua_pushlightfunction(L, libstorm_os_invoke_later);
+        lua_pushnumber(L, TEMP_POLL_PERIOD);
+        lua_pushlightfunction(L, poll_temp_until_ready);
+        lua_pushvalue(L, 1);
+        lua_pushnumber(L, numtries - 1);
+        lua_pushvalue(L, 3);
+        lua_call(L, 5, 0);
+    } else {
+        TEMP_DELAY(); // Just to make sure we wait long enough
+        uint32_t bytes = temp_read_bytes(numbytes, read_SCL_temp, read_SDA_temp, clear_SCL_temp, clear_SDA_temp, raise_SCL_temp, raise_SDA_temp);
+        lua_pushvalue(L, 3);
+        lua_pushnumber(L, bytes);
+        lua_call(L, 1, 0);
+    }
+    return 0;
+}
+
+void temp_send_cmd_tempsensor(uint8_t cmd) {
+    return temp_send_cmd(cmd, read_SCL_temp, read_SDA_temp, clear_SCL_temp, clear_SDA_temp, raise_SCL_temp, raise_SDA_temp);
 }
 
 // Wrapper functions for Lua

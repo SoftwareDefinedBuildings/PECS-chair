@@ -1,3 +1,6 @@
+#define I2C_DELAY() delay(10000)
+#define TEMP_DELAY() delay(10)
+
 #define SCL_FAN 0x00000001
 #define SCL_FAN_BIT 0
 #define SDA_FAN 0x00000002
@@ -10,6 +13,10 @@
 
 #define TEMPERATURE_COMMAND 3
 #define HUMIDITY_COMMAND 5
+
+#define TEMP_POLL_PERIOD 200 * MILLISECOND_TICKS
+
+int delay(int numsteps);
 
 int i2c_write_byte_fan(int send_start, int send_stop, uint8_t byte);
 uint8_t i2c_read_byte_fan(int nack, int send_stop);

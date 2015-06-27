@@ -254,7 +254,7 @@ function updateSMAP()
    -- Update sMAP
    local temp
    local humidity
-   temp, humidity = storm.n.get_temp_humidity(storm.n.CELSIUS)
+   temp, humidity = storm.n.get_temp_humidity(storm.n.CELSIUS) -- API CHANGED: now get_temp_humidity is asynchronous
    local pyld = { storm.os.nodeid(), storm.n.check_occupancy(), heaterSettings[storm.n.BACK_HEATER], heaterSettings[storm.n.BOTTOM_HEATER], fanSettings[storm.n.BACK_FAN], fanSettings[storm.n.BOTTOM_FAN], temp, humidity }
    
    -- Update the phone
@@ -280,11 +280,18 @@ end
 int send_payload(lua_State* L);
 int send_handler(lua_State* L);
 
+int update_server_tail(lua_State* L);
+
 int update_server(lua_State* L) {
     // Prepare payload to update server
     lua_pushlightfunction(L, lua_get_temp_humidity);
     lua_pushnumber(L, CELSIUS);
-    lua_call(L, 1, 2);
+    lua_pushlightfunction(L, update_server_tail);
+    lua_call(L, 2, 0);
+    return 0;
+}
+    
+int update_server_tail(lua_State* L) {
     int humidity_index = lua_gettop(L);
     int temp_index = humidity_index - 1;
     lua_pushlightfunction(L, check_occupancy);
