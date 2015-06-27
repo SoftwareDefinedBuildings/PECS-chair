@@ -12,7 +12,6 @@ autorun = "contrib/app/PECS-chair/set_bl_name.lua" --<< EDIT ME
 libs = { --<< EDIT ME
     cord    = "contrib/lib/cord.lua",
     stormsh = "contrib/lib/stormsh.lua",
-    chairsettings = "contrib/app/PECS-chair/chairsettings.lua",
     name = "contrib/app/PECS-chair/bl_name.lua"
 }
 

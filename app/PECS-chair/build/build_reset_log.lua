@@ -11,8 +11,7 @@ autorun = "contrib/app/PECS-chair/reset_log.lua" --<< EDIT ME
 -- are 'require()'ed.
 libs = { --<< EDIT ME
     cord    = "contrib/lib/cord.lua",
-    stormsh = "contrib/lib/stormsh.lua",
-    chairsettings = "contrib/app/PECS-chair/chairsettings.lua"
+    stormsh = "contrib/lib/stormsh.lua"
 }
 
 
