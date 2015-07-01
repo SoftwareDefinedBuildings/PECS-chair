@@ -151,6 +151,25 @@ int actuation_handler(lua_State* L) {
 int bl_handler(lua_State* L) {
     int number = luaL_checkint(L, 5);  // the opcode
     switch (number) {
+    case 0:
+        lua_pushlightfunction(L, set_time_diff);
+        lua_pushlightfunction(L, bytes_to_u32);
+        lua_pushvalue(L, 1);
+        lua_pushvalue(L, 2);
+        lua_pushvalue(L, 3);
+        lua_pushvalue(L, 4);
+        lua_call(L, 4, 1);
+        lua_pushlightfunction(L, get_time_always);
+        lua_call(L, 0, 1);
+        int diff = lua_tointeger(L, -2) - lua_tointeger(L, -1);
+        lua_pop(L, 2);
+        lua_pushnumber(L, diff);
+        lua_call(L, 1, 1);
+        if (lua_toboolean(L, -1)) {
+            lua_pushlightfunction(L, register_time_synchronization);
+            lua_call(L, 0, 0);
+        }
+        break;
     case 1:
         lua_pushlightfunction(L, set_heater);
         int heater_index = lua_gettop(L);
@@ -193,23 +212,9 @@ int bl_handler(lua_State* L) {
         lua_call(L, 1, 0);
         break;
     default:
-        lua_pushlightfunction(L, set_time_diff);
-        lua_pushlightfunction(L, bytes_to_u32);
-        lua_pushvalue(L, 1);
-        lua_pushvalue(L, 2);
-        lua_pushvalue(L, 3);
-        lua_pushvalue(L, 4);
-        lua_call(L, 4, 1);
-        lua_pushlightfunction(L, get_time_always);
-        lua_call(L, 0, 1);
-        int diff = lua_tointeger(L, -2) - lua_tointeger(L, -1);
-        lua_pop(L, 2);
-        lua_pushnumber(L, diff);
-        lua_call(L, 1, 1);
-        if (lua_toboolean(L, -1)) {
-            lua_pushlightfunction(L, register_time_synchronization);
-            lua_call(L, 0, 0);
-        }
+        // we got an invalid opcode, perhaps because we've lost alignment
+        lua_pushlightfunction(L, bl_PECS_clear_recv_buf);
+        lua_call(L, 0, 0);
         break;
     }
     return 0;

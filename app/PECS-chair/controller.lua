@@ -7,7 +7,7 @@ storm.io.set(0, BL_CTL)
 
 storm.n.chairsettings_init()
 
-data_ip = "ff02::1" -- Where to send the data. ff02::1 to use firestorm proxy
+data_ip = "2001:470:1f04:5f2::2" -- Where to send the data. ff02::1 to use firestorm proxy
 
 -- Store saved settings in flash and reset
 --[[storm.os.invokePeriodically(1213 * storm.os.SECOND, function ()

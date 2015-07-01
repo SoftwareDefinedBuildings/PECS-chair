@@ -370,8 +370,8 @@ int try_send(lua_State* L) {
     lua_getglobal(L, "__rnqMessage");
     lua_getglobal(L, "data_ip");
     lua_pushnumber(L, 38003);
-    lua_pushnumber(L, 175);
-    lua_pushnumber(L, 100 * MILLISECOND_TICKS);
+    lua_pushnumber(L, 15);
+    lua_pushnumber(L, SECOND_TICKS);
     lua_pushnil(L);
     lua_pushlightfunction(L, try_send); // if it times out, try again
     lua_call(L, 8, 0);
