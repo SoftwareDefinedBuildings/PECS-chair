@@ -1,5 +1,8 @@
+#ifndef __I2CCHAIR_H__
+#define __I2CCHAIR_H__
+
 #define I2C_DELAY() delay(10000)
-#define TEMP_DELAY() delay(10)
+#define TEMP_DELAY() delay(200)
 
 #define SCL_FAN 0x00000001
 #define SCL_FAN_BIT 0
@@ -59,3 +62,5 @@ int lua_read_register(lua_State* L);
     { LSTRKEY( "read_pins_temp" ), LFUNCVAL( lua_read_pins_temp ) }, \
     { LSTRKEY( "set_SDA_temp" ), LFUNCVAL( lua_set_SDA_temp ) }, \
     { LSTRKEY( "set_SCL_temp" ), LFUNCVAL( lua_set_SCL_temp ) },
+
+#endif

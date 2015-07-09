@@ -1,3 +1,6 @@
+#ifndef __CHAIRSETTINGS_H__
+#define __CHAIRSETTINGS_H__
+
 #define ALPHA 0.2
 
 int chairsettings_init(lua_State* L);
@@ -29,3 +32,5 @@ int compute_time_diff(lua_State* L);
     { LSTRKEY( "get_time_diff" ), LFUNCVAL( get_time_diff ) }, \
     { LSTRKEY( "set_time_diff" ), LFUNCVAL( set_time_diff ) }, \
     { LSTRKEY( "compute_time_diff" ), LFUNCVAL( compute_time_diff ) },
+
+#endif

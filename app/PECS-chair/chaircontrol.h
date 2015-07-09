@@ -1,3 +1,6 @@
+#ifndef __CHAIRCONTROL_H__
+#define __CHAIRCONTROL_H__
+
 #define PA_OFFSET 0x000 // GPIO Port 0
 #define PB_OFFSET 0x200 // GPIO Port 1
 
@@ -118,3 +121,5 @@ int libstorm_os_reset(lua_State* L);
     { LSTRKEY( "get_temp_humidity" ), LFUNCVAL( lua_get_temp_humidity ) }, \
     { LSTRKEY( "enable_reset" ), LFUNCVAL( enable_reset ) }, \
     { LSTRKEY( "gcbytes" ), LFUNCVAL( gcbytes ) },
+
+#endif

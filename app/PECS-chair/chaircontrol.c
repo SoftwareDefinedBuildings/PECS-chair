@@ -268,6 +268,7 @@ int lua_get_temp_humidity_tail(lua_State* L) {
     double humidity = (ctemp - 25) * (0.01 + 0.00008 * rawhumidity) + linhumidity;
     int fixedPtTemperature = (int) (temperature * 100);
     int fixedPtHumidity = (int) (humidity * 100); // * 100 fixed point
+    printf("temp: %d, hum: %d\n", fixedPtTemperature, fixedPtHumidity);
     lua_pushvalue(L, lua_upvalueindex(2));
     lua_pushnumber(L, fixedPtTemperature);
     lua_pushnumber(L, fixedPtHumidity);
