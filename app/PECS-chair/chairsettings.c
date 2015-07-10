@@ -1,4 +1,5 @@
 #include "chairsettings.h"
+#include "i2cchair.h"
 
 /* The initialization function does the work needed to set up physical chair actuation
    and provide and API to control the chair. It also begins these processes and repeatedly
@@ -43,6 +44,10 @@ int set_curr_state(lua_State* L);
 int confirm_clear(lua_State* L);
 
 int chairsettings_init(lua_State* L) {
+
+    //Configure I2C pullups for SHT15
+    *gpio0_pullup_enable_set = SCL_TEMP;
+
     lua_pushlightfunction(L, set_occupancy_mode);
     lua_pushnumber(L, ENABLE);
     lua_call(L, 1, 0);
