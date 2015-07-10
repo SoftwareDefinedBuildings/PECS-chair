@@ -32,7 +32,11 @@ def handlemsg(received, addr):
         ack_id = received[10]
     jsonData = json.dumps(newmsg)
     print "Received:", jsonData
-    r = requests.post("http://localhost:38001", data=jsonData)
+    try:
+        r = requests.post("http://localhost:38001", data=jsonData)
+    except requests.ConnectionError as e:
+        print e,
+        return {'rv': e}
     print r.text
     if ack_id is not None and r.text == 'success':
         print "Sending ACK:", ack_id
