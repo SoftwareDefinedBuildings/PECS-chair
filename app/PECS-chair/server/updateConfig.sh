@@ -1,4 +1,5 @@
 #!/bin/bash
+mkdir -p actuations
 screen -S chairDriver -X quit
 screen -S portServer -X quit
 screen -S actuateServer -X quit

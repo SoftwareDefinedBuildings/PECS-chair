@@ -1,4 +1,5 @@
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+from SocketServer import ThreadingMixIn
 import ConfigParser
 import json
 import msgpack
@@ -103,6 +104,8 @@ class ActuationHandler(BaseHTTPRequestHandler):
                 if 'myIP' in doc:
                     ips[0] = doc['myIP']
                 if 'fromFS' not in doc or not doc['fromFS']:
+                    with open("actuations/{0}".format(str(time.time())), 'w') as f:
+                        f.write(doc_recvd)
                     for key in doc:
                         if key not in ["backh", "bottomh", "backf", "bottomf", "heaters", "fans"]:
                             removeList.append(key)
@@ -122,5 +125,8 @@ class ActuationHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(str(timestamp))
 
-serv = HTTPServer(('', 38001), ActuationHandler)
+class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+    """Handle requests in separate threads to improve performance."""
+
+serv = ThreadedHTTPServer(('', 38001), ActuationHandler)
 serv.serve_forever()
