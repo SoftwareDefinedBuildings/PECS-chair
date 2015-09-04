@@ -105,7 +105,7 @@ int pack_string(lua_State* L) {
     uint16_t macaddr = (uint16_t) luaL_checkint(L, 8);
     strbuf[9] = macaddr >> 8;
     strbuf[10] = macaddr & 0xFF; // big endian node id
-    lua_pushlstring(L, strbuf, 1);
+    lua_pushlstring(L, strbuf, 11);
     return 1;
 }
 
