@@ -44,6 +44,9 @@ int set_curr_state(lua_State* L);
 int confirm_clear(lua_State* L);
 
 int chairsettings_init(lua_State* L) {
+    // Enable bluetooth reset pin
+    lua_pushlightfunction(L, init_hmsoft_reset_pin);
+    lua_call(L, 0, 0);
 
     //Configure I2C pullups for SHT15
     *gpio0_pullup_enable_set = SCL_TEMP;

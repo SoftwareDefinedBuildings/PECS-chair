@@ -6,6 +6,7 @@ storm.io.set_mode(storm.io.OUTPUT, BL_CTL)
 storm.io.set(0, BL_CTL)
 
 storm.n.chairsettings_init()
+storm.n.periodically_ping_bl()
 
 data_ip = "2001:470:1f04:5f2::2" -- Where to send the data. ff02::1 to use firestorm proxy
 

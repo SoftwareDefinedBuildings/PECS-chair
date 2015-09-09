@@ -285,12 +285,54 @@ int reset_counter(lua_State* L) {
 #define HMSOFT_RESET_PIN 6  // storm.io.D6
 #define TP_IRQ 7  // storm.io.D7
 
-int enable_hmsoft_and_reset(lua_State* L) {
-    // storm.io.set(1, HMSOFT_RESET_PIN)
-    lua_pushlightfunction(L, libstorm_io_set);
-    lua_pushnumber(L, 1);
+// don't call this like a Lua function
+void set_hmsoft_reset(lua_State* L, int value) {
+   lua_pushlightfunction(L, libstorm_io_set);
+   lua_pushnumber(L, value);
+   lua_pushnumber(L, HMSOFT_RESET_PIN);
+   lua_call(L, 2, 0);
+}
+
+int disable_hmsoft(lua_State* L) {
+    set_hmsoft_reset(L, 0);
+    return 0;
+}
+
+int enable_hmsoft(lua_State* L) {
+    set_hmsoft_reset(L, 1);
+    return 0;
+}
+
+int reset_hmsoft(lua_State* L) {
+    lua_pushlightfunction(L, disable_hmsoft);
+    lua_call(L, 0, 0);
+    
+    lua_pushlightfunction(L, libstorm_os_invoke_later);
+    lua_pushnumber(L, 105 * MILLISECOND_TICKS); // the data sheet says > 100 ms, but I'm adding an extra 5 ms for safety
+    lua_pushlightfunction(L, enable_hmsoft);
+    lua_call(L, 2, 0);
+    
+    return 0;
+}
+
+int init_hmsoft_reset_pin(lua_State* L) {
+    //  storm.io.set_mode(storm.io.OUTPUT, HMSOFT_RESET_PIN)
+    lua_pushlightfunction(L, libstorm_io_set_mode);
+    lua_pushnumber(L, 0);  // storm.io.OUTPUT
     lua_pushnumber(L, HMSOFT_RESET_PIN);
     lua_call(L, 2, 0);
+    // enable hmsoft
+    lua_pushlightfunction(L, enable_hmsoft);
+    lua_call(L, 0, 0);
+    
+    return 0;
+}
+
+// init_hmsoft_reset_pin must have been called first
+int enable_hmsoft_and_reset(lua_State* L) {
+    // enable hmsoft
+    lua_pushlightfunction(L, enable_hmsoft);
+    lua_call(L, 0, 0);
     // storm.os.reset()
     lua_pushlightfunction(L, libstorm_os_reset);
     lua_call(L, 0, 0);
@@ -308,16 +350,11 @@ int handle_tap(lua_State* L) {
     // if count == 4
     if (count == 4) {
         printf("Resetting because of tap sequence\n");
-        //  storm.io.set_mode(storm.io.OUTPUT, HMSOFT_RESET_PIN)
-        lua_pushlightfunction(L, libstorm_io_set_mode);
-        lua_pushnumber(L, 0);  // storm.io.OUTPUT
-        lua_pushnumber(L, HMSOFT_RESET_PIN);
-        lua_call(L, 2, 0);
-        // storm.io.set(0, HMSOFT_RESET)
-        lua_pushlightfunction(L, libstorm_io_set);
-        lua_pushnumber(L, 0);
-        lua_pushnumber(L, HMSOFT_RESET_PIN);
-        lua_call(L, 2, 0);
+        
+        // disable hmsoft
+        lua_pushlightfunction(L, disable_hmsoft);
+        lua_call(L, 0, 0);
+        
         lua_pushlightfunction(L, libstorm_os_invoke_later);
         lua_pushnumber(L, 2000 * MILLISECOND_TICKS);
         lua_pushlightfunction(L, enable_hmsoft_and_reset);

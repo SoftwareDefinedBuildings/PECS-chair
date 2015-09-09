@@ -5,6 +5,7 @@ int interpret_string(lua_State* L);
 int pack_string(lua_State* L);
 
 #define BLCHAIR_SYMBOLS \
+    { LSTRKEY( "periodically_ping_bl" ), LFUNCVAL( periodically_ping_bl ) }, \
     { LSTRKEY( "bl_PECS_init" ), LFUNCVAL( bl_PECS_init) }, \
     { LSTRKEY( "bl_PECS_send" ), LFUNCVAL( bl_PECS_send ) }, \
     { LSTRKEY( "bl_PECS_receive_cb" ), LFUNCVAL( bl_PECS_receive_cb ) }, \

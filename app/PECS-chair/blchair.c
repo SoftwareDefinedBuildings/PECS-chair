@@ -2,8 +2,10 @@
 #include "blchair.h"
 
 extern lua_State* _cb_L;
+int received_bl = 0; // has anything been received via bluetooth since this was last set to 0?
 volatile int32_t bl_receive_flag;
 char bl_receive_buffer[20];
+const char ping[4] = { 0, 0, 0, 0 };
 
 // Inspired by syscall types in libstorm.c
 int32_t __attribute__((naked)) k_syscall_ex_ri32(uint32_t id) {
@@ -23,6 +25,37 @@ int32_t __attribute__((naked)) k_syscall_ex_ri32_cptr_u32_vi32ptr_vptr(uint32_t 
 #define bl_PECS_clearbuf_syscall() k_syscall_ex_ri32(0x5704)
 
 int do_nothing(lua_State* L) {
+    return 0;
+}
+
+int blank_count = 0;
+// Don't call this like a Lua function!
+int reset_hmsoft_if_inactive(lua_State* L) {
+    if (received_bl) {
+        received_bl = 0;
+        blank_count = 0;
+    } else if (++blank_count == 5) {
+        blank_count = 0;
+        printf("Resetting HMSoft (was inactive for 20 seconds)\n");
+        lua_pushlightfunction(L, reset_hmsoft);
+        lua_call(L, 0, 0);
+        return 0;
+    }
+    return 1;
+}
+
+int ping_bl(lua_State* L) {
+    if (reset_hmsoft_if_inactive(L)) {
+        bl_PECS_send_syscall(ping, 4);
+    }
+    return 0;
+}
+
+int periodically_ping_bl(lua_State* L) {
+    lua_pushlightfunction(L, libstorm_os_invoke_periodically);
+    lua_pushnumber(L, SECOND_TICKS << 2);
+    lua_pushlightfunction(L, ping_bl);
+    lua_call(L, 2, 0);
     return 0;
 }
 
@@ -64,6 +97,7 @@ int bl_PECS_receive_cb(lua_State* L) {
 void bl_PECS_receive_cb_handler() {
     int rv;
     const char* msg;
+    received_bl = 1; // we got something via bluetooth
     lua_getglobal(_cb_L, "__bl_cb"); // the callback
     lua_pushlstring(_cb_L, bl_receive_buffer, bl_receive_flag);
     rv = lua_pcall(_cb_L, 1, 0, 0);
