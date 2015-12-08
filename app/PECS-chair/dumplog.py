@@ -4,7 +4,13 @@ import datetime
 import stormloader.main
 import stormloader.sl_api
 import struct
+import sys
 from time import sleep
+
+if '-f' in sys.argv[1:]:
+    fast = True
+else:
+    fast = False
 
 sl = stormloader.sl_api.StormLoader()
 
@@ -188,7 +194,8 @@ rebootoffset = 0 # time offset in the last seen reboot
 entriesread = 0
 while addr < sp:
     toread = min(CHUNK_SIZE << PAGE_EXP, sp - addr)
-    sleep(0.1) # Add some delay. Otherwise we see more failures.
+    if not fast:
+        sleep(0.1) # Add some delay. Otherwise we see more failures in a VM
     try:
         chunk = sl.c_xrrange(USERLAND_OFFSET + addr, toread)
     except stormloader.sl_api.CommsTimeoutException:
